@@ -1,4 +1,11 @@
-// --- Cargamos tarifas (por ahora embebidas; luego podés moverlo a tarifas.json) ---
+// ================================
+// Simulador UTE (interno) - v0.2
+// - IVA 22%: cargo fijo NO, resto SÍ (según lo indicado por Agus)
+// - Desglose + Subtotal + IVA + Total
+// ================================
+
+// Por ahora dejamos tarifas embebidas (simple).
+// Más adelante lo movemos a tarifas.json para que sea editable sin tocar código.
 const DATA = {
   tarifas: [
     {
@@ -14,22 +21,35 @@ const DATA = {
           { hastaIncluye: null, precioPorKWh: 10.539 }
         ]
       },
+      iva: {
+        tasa: 0.22,
+        aplica: {
+          cargoFijo: false,
+          potencia: true,
+          energia: true,
+          reactiva: true
+        }
+      },
       notas: "Modalidad Residencial. Potencia contratada <= 40 kW."
     }
   ]
 };
 
 function moneyUY(n) {
-  // Formato simple (sin símbolo, con 2 decimales). Si querés: "es-UY" + moneda UYU.
-  return Number(n).toFixed(2);
+  return new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU" }).format(n);
 }
 
+function num(x) {
+  const v = Number(x);
+  return Number.isFinite(v) ? v : 0;
+}
+
+// Calcula energía por escalones y devuelve detalle por tramo
 function calcEnergiaEscalones(kwh, escalones) {
   let restante = Math.max(0, kwh);
   let energia = 0;
   const detalle = [];
 
-  let desde = 1; // solo para mostrar rangos "1-100", etc. (no afecta cálculo)
   let anteriorHasta = 0;
 
   for (const esc of escalones) {
@@ -38,10 +58,6 @@ function calcEnergiaEscalones(kwh, escalones) {
     const hasta = esc.hastaIncluye; // number o null (sin tope)
     const topeActual = (hasta === null) ? Infinity : hasta;
 
-    // Cantidad de kWh que caen en este tramo:
-    // tramo 1: hasta 100
-    // tramo 2: 101-600 (500 kWh)
-    // tramo 3: 601+ (lo que reste)
     const maxEnTramo = (topeActual === Infinity)
       ? Infinity
       : Math.max(0, topeActual - anteriorHasta);
@@ -51,7 +67,6 @@ function calcEnergiaEscalones(kwh, escalones) {
 
     energia += costoTramo;
 
-    // Para el desglose
     const rangoLabel = (topeActual === Infinity)
       ? `${anteriorHasta + 1}+ kWh`
       : `${anteriorHasta + 1}–${topeActual} kWh`;
@@ -59,6 +74,7 @@ function calcEnergiaEscalones(kwh, escalones) {
     detalle.push({
       concepto: `Energía (${rangoLabel} @ ${esc.precioPorKWh} $/kWh)`,
       importe: costoTramo
+      // aplicaIva se agrega luego según regla de tarifa
     });
 
     restante -= enTramo;
@@ -69,36 +85,53 @@ function calcEnergiaEscalones(kwh, escalones) {
 }
 
 function calcularTarifa(tarifa, kwh, kw) {
-  const cargoFijo = tarifa.cargoFijo;
-  const potencia = Math.max(0, kw) * tarifa.potencia.precioPorkW;
+  const kwhSafe = Math.max(0, num(kwh));
+  const kwSafe  = Math.max(0, num(kw));
 
+  const cargoFijo = num(tarifa.cargoFijo);
+  const potencia  = kwSafe * num(tarifa.potencia?.precioPorkW);
+
+  // Energía
   let energia = 0;
   let detalleEnergia = [];
 
-  if (tarifa.energia.tipo === "escalones") {
-    const res = calcEnergiaEscalones(Math.max(0, kwh), tarifa.energia.escalones);
+  if (tarifa.energia?.tipo === "escalones") {
+    const res = calcEnergiaEscalones(kwhSafe, tarifa.energia.escalones);
     energia = res.energia;
     detalleEnergia = res.detalle;
   } else {
-    throw new Error("Tipo de energía no soportado aún: " + tarifa.energia.tipo);
+    throw new Error("Tipo de energía no soportado aún: " + tarifa.energia?.tipo);
   }
 
+  // IVA rules
+  const tasaIva = num(tarifa.iva?.tasa ?? 0.22);
+  const ivaAplicaCargoFijo = !!tarifa.iva?.aplica?.cargoFijo;
+  const ivaAplicaPotencia  = !!tarifa.iva?.aplica?.potencia;
+  const ivaAplicaEnergia   = !!tarifa.iva?.aplica?.energia;
+
+  // Detalle base (sin IVA sumado aún)
   const detalle = [
-    { concepto: "Cargo fijo mensual", importe: cargoFijo },
-    { concepto: `Potencia contratada (${tarifa.potencia.precioPorkW} $/kW)`, importe: potencia },
-    ...detalleEnergia
+    { concepto: "Cargo fijo mensual", importe: cargoFijo, aplicaIva: ivaAplicaCargoFijo },
+    { concepto: `Potencia contratada (${num(tarifa.potencia?.precioPorkW)} $/kW)`, importe: potencia, aplicaIva: ivaAplicaPotencia },
+    ...detalleEnergia.map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }))
   ];
 
-  const total = cargoFijo + potencia + energia;
+  const subtotal = detalle.reduce((acc, r) => acc + r.importe, 0);
+  const baseIva  = detalle.filter(r => r.aplicaIva).reduce((acc, r) => acc + r.importe, 0);
+  const iva      = baseIva * tasaIva;
+  const total    = subtotal + iva;
 
-  return { total, detalle };
+  return { subtotal, baseIva, iva, total, detalle };
 }
 
-// --- UI ---
+// ================================
+// UI
+// ================================
 const tarifaSelect = document.getElementById("tarifaSelect");
 const kwhInput = document.getElementById("kwhInput");
 const kwInput = document.getElementById("kwInput");
 const calcBtn = document.getElementById("calcBtn");
+
 const resultCard = document.getElementById("resultCard");
 const totalOut = document.getElementById("totalOut");
 const totalOut2 = document.getElementById("totalOut2");
@@ -106,6 +139,7 @@ const detalleBody = document.getElementById("detalleBody");
 const notaTarifa = document.getElementById("notaTarifa");
 
 function fillTarifas() {
+  tarifaSelect.innerHTML = "";
   for (const t of DATA.tarifas) {
     const opt = document.createElement("option");
     opt.value = t.id;
@@ -120,31 +154,47 @@ function getTarifaById(id) {
   return t;
 }
 
+function addRow(concepto, importe, opts = {}) {
+  const tr = document.createElement("tr");
+  const ivaTag = opts.aplicaIva === true ? ' <span class="muted">(IVA)</span>' : '';
+  tr.innerHTML = `<td>${concepto}${ivaTag}</td><td class="right">${moneyUY(importe)}</td>`;
+  detalleBody.appendChild(tr);
+}
+
 function render(res, tarifa) {
+  detalleBody.innerHTML = "";
+
+  // Detalle conceptos
+  for (const row of res.detalle) {
+    addRow(row.concepto, row.importe, { aplicaIva: row.aplicaIva });
+  }
+
+  // Subtotal / IVA / Total
+  addRow("<b>Subtotal</b>", res.subtotal);
+  addRow(`IVA (${Math.round((tarifa.iva?.tasa ?? 0.22) * 100)}%)`, res.iva);
+  // Total en encabezado + footer
   totalOut.textContent = moneyUY(res.total);
   totalOut2.textContent = moneyUY(res.total);
-
-  detalleBody.innerHTML = "";
-  for (const row of res.detalle) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${row.concepto}</td><td class="right">${moneyUY(row.importe)}</td>`;
-    detalleBody.appendChild(tr);
-  }
 
   notaTarifa.textContent = tarifa.notas || "";
   resultCard.style.display = "block";
 }
 
 calcBtn.addEventListener("click", () => {
-  const tarifa = getTarifaById(tarifaSelect.value);
-  const kwh = Number(kwhInput.value);
-  const kw = Number(kwInput.value);
+  try {
+    const tarifa = getTarifaById(tarifaSelect.value);
+    const kwh = Number(kwhInput.value);
+    const kw  = Number(kwInput.value);
 
-  if (!Number.isFinite(kwh) || kwh < 0) return alert("kWh inválidos");
-  if (!Number.isFinite(kw) || kw < 0) return alert("kW inválidos");
+    if (!Number.isFinite(kwh) || kwh < 0) return alert("kWh inválidos");
+    if (!Number.isFinite(kw) || kw < 0) return alert("kW inválidos");
 
-  const res = calcularTarifa(tarifa, kwh, kw);
-  render(res, tarifa);
+    const res = calcularTarifa(tarifa, kwh, kw);
+    render(res, tarifa);
+  } catch (e) {
+    console.error(e);
+    alert("Error: " + (e?.message || e));
+  }
 });
 
 fillTarifas();
