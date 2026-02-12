@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Simulador UTE</title>
+  <title>Simulador UTE (interno)</title>
   <style>
     body { font-family: system-ui, Arial; margin: 24px; max-width: 900px; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
@@ -17,11 +17,14 @@
     .muted { color:#666; font-size: 13px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 700px){ .row{ grid-template-columns: 1fr; } }
+    .pill { display:inline-block; padding: 4px 8px; border-radius: 999px; border: 1px solid #ddd; font-size: 12px; color:#444; }
   </style>
 </head>
 <body>
-  <h1>Simulador de tarifas UTE</h1>
-  <p class="muted">Versión inicial: Residencial Simple. (Luego agregamos tarifas una por una.)</p>
+  <h1>Simulador de tarifas UTE (interno)</h1>
+  <p class="muted">
+    Versión inicial: Residencial Simple. Incluye IVA (cargo fijo sin IVA; otros conceptos con IVA).
+  </p>
 
   <div class="card">
     <label>Tarifa</label>
@@ -43,18 +46,27 @@
 
   <div class="card" id="resultCard" style="display:none;">
     <div class="total">Total: <span id="totalOut"></span></div>
+    <div class="muted" style="margin-top:6px;">
+      <span class="pill">IVA: cargo fijo NO; energía/potencia SÍ</span>
+    </div>
 
     <table>
       <thead>
-        <tr><th>Concepto</th><th class="right">Importe ($)</th></tr>
+        <tr>
+          <th>Concepto</th>
+          <th class="right">Importe</th>
+        </tr>
       </thead>
       <tbody id="detalleBody"></tbody>
       <tfoot>
-        <tr><th>Total</th><th class="right" id="totalOut2"></th></tr>
+        <tr>
+          <th>Total</th>
+          <th class="right" id="totalOut2"></th>
+        </tr>
       </tfoot>
     </table>
 
-    <div class="muted" id="notaTarifa"></div>
+    <div class="muted" id="notaTarifa" style="margin-top:10px;"></div>
   </div>
 
   <script src="app.js"></script>
