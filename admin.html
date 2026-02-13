@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Panel de precios (interno)</title>
+  <style>
+    body { font-family: system-ui, Arial; margin: 24px; max-width: 1100px; }
+    .topbar { display:flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+    a { color:#0a58ca; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .row { display:grid; grid-template-columns: 320px 1fr; gap: 16px; }
+    @media (max-width: 900px){ .row{ grid-template-columns: 1fr; } }
+
+    select, input, textarea, button { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; margin-top: 6px; }
+    textarea { min-height: 70px; resize: vertical; }
+    label { display:block; font-weight: 700; margin-top: 10px; }
+    button { cursor:pointer; font-weight: 800; }
+
+    .muted { color:#666; font-size: 13px; }
+    .badge { display:inline-block; padding: 3px 8px; border-radius: 999px; border: 1px solid #ddd; font-size: 12px; color:#444; }
+
+    .sectionTitle { font-weight: 900; margin: 14px 0 6px; text-transform: uppercase; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px){ .grid2{ grid-template-columns: 1fr; } }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; vertical-align: top; }
+    th { font-size: 13px; color:#333; }
+
+    .actions { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .actions button { width: auto; padding: 10px 12px; }
+
+    .error { background: #fff5f5; border: 1px solid #ffd1d1; color: #7a1a1a; padding: 10px; border-radius: 10px; margin-top: 10px; }
+    .ok { background: #f4fff4; border: 1px solid #cfe9cf; color: #1f5d1f; padding: 10px; border-radius: 10px; margin-top: 10px; }
+
+    .readonly input, .readonly textarea { background: #f7f7f7; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <h1 style="margin:0;">Panel de precios</h1>
+      <div class="muted" style="margin-top:6px;">
+        Todos pueden ver. Solo Agus puede habilitar edición y exportar <span class="badge">tarifas.json</span>.
+      </div>
+    </div>
+    <div>
+      <a href="./index.html">← Volver al simulador</a>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <label>Tarifa</label>
+      <select id="tarifaSelect"></select>
+
+      <div class="actions">
+        <button id="btnEnableEdit">Habilitar edición</button>
+        <button id="btnDisableEdit" style="display:none;">Bloquear edición</button>
+      </div>
+
+      <div class="muted" style="margin-top:10px;">
+        Modo: <b id="modeLabel">Vista</b>
+      </div>
+
+      <div id="statusBox"></div>
+    </div>
+
+    <div class="card" id="formCard">
+      <div class="muted">Cargando...</div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
