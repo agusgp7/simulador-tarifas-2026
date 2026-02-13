@@ -5,25 +5,44 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Simulador UTE (interno)</title>
   <style>
-    body { font-family: system-ui, Arial; margin: 24px; max-width: 900px; }
+    body { font-family: system-ui, Arial; margin: 24px; max-width: 980px; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
     label { display:block; margin-top: 10px; font-weight: 600; }
     input, select, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 10px; border: 1px solid #ccc; }
     button { cursor: pointer; font-weight: 700; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    td, th { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+    td, th { border-bottom: 1px solid #eee; padding: 8px; text-align: left; vertical-align: top; }
     .right { text-align: right; }
     .total { font-size: 20px; font-weight: 800; }
     .muted { color:#666; font-size: 13px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 700px){ .row{ grid-template-columns: 1fr; } }
-    .pill { display:inline-block; padding: 4px 8px; border-radius: 999px; border: 1px solid #ddd; font-size: 12px; color:#444; }
+
+    /* Section rows */
+    .section-row td {
+      border-bottom: none;
+      padding-top: 14px;
+      padding-bottom: 6px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .grand-total {
+      margin-top: 14px;
+      display:flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-weight: 900;
+      font-size: 18px;
+      padding-top: 12px;
+      border-top: 2px solid #111;
+    }
   </style>
 </head>
 <body>
   <h1>Simulador de tarifas UTE (interno)</h1>
   <p class="muted">
-    Versión inicial: Residencial Simple. Incluye IVA (cargo fijo sin IVA; otros conceptos con IVA).
+    Versión inicial: Residencial Simple. (IVA: cargo fijo NO; demás conceptos SÍ)
   </p>
 
   <div class="card">
@@ -45,10 +64,7 @@
   </div>
 
   <div class="card" id="resultCard" style="display:none;">
-    <div class="total">Total: <span id="totalOut"></span></div>
-    <div class="muted" style="margin-top:6px;">
-      <span class="pill">IVA: cargo fijo NO; energía/potencia SÍ</span>
-    </div>
+    <div class="total">Resultado mensual</div>
 
     <table>
       <thead>
@@ -58,13 +74,12 @@
         </tr>
       </thead>
       <tbody id="detalleBody"></tbody>
-      <tfoot>
-        <tr>
-          <th>Total</th>
-          <th class="right" id="totalOut2"></th>
-        </tr>
-      </tfoot>
     </table>
+
+    <div class="grand-total">
+      <div>TOTAL</div>
+      <div id="totalOut"></div>
+    </div>
 
     <div class="muted" id="notaTarifa" style="margin-top:10px;"></div>
   </div>
