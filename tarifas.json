@@ -1,0 +1,23 @@
+{
+  "tarifas": [
+    {
+      "id": "residencial_simple",
+      "nombre": "Tarifa Residencial Simple (<= 40 kW, 230/400V)",
+      "cargoFijo": 324.9,
+      "potencia": { "precioPorkW": 83.2 },
+      "energia": {
+        "tipo": "escalones",
+        "escalones": [
+          { "hastaIncluye": 100, "precioPorKWh": 6.744 },
+          { "hastaIncluye": 600, "precioPorKWh": 8.452 },
+          { "hastaIncluye": null, "precioPorKWh": 10.539 }
+        ]
+      },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
+      },
+      "notas": "Modalidad Residencial. Potencia contratada <= 40 kW."
+    }
+  ]
+}
