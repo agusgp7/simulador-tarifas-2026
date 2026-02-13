@@ -1,6 +1,7 @@
 // ================================
 // Simulador UTE (interno)
-// Lee tarifas desde tarifas.json
+// - Lee tarifas desde tarifas.json
+// - Soporta: escalones (TRS) y doble_horario (TRD)
 // ================================
 
 let DATA = { tarifas: [] };
@@ -56,8 +57,7 @@ function calcEnergiaEscalones(kwh, escalones) {
 
     detalle.push({
       concepto: `${nombreEscalon} ${fmtKwh(kwhEnTramo)} kWh x $ ${fmtPriceKwh(esc.precioPorKWh)}`,
-      importe: costoTramo,
-      aplicaIva: true
+      importe: costoTramo
     });
 
     restante -= kwhEnTramo;
@@ -67,9 +67,19 @@ function calcEnergiaEscalones(kwh, escalones) {
   return detalle;
 }
 
-function calcularTarifa(tarifa, kwh, kw) {
-  const kwhSafe = Math.max(0, num(kwh));
-  const kwSafe  = Math.max(0, num(kw));
+// ---------- Energía doble horario (TRD) ----------
+function calcEnergiaDobleHorario(kwhPunta, precioPunta, kwhFuera, precioFuera) {
+  const kp = Math.max(0, kwhPunta);
+  const kf = Math.max(0, kwhFuera);
+
+  return [
+    { concepto: `Punta ${fmtKwh(kp)} kWh x $ ${fmtPriceKwh(precioPunta)}`, importe: kp * precioPunta },
+    { concepto: `Fuera de Punta ${fmtKwh(kf)} kWh x $ ${fmtPriceKwh(precioFuera)}`, importe: kf * precioFuera }
+  ];
+}
+
+function calcularTarifa(tarifa, inputs) {
+  const kwSafe = Math.max(0, num(inputs.kw));
 
   const tasaIva = num(tarifa.iva?.tasa ?? 0.22);
 
@@ -90,11 +100,22 @@ function calcularTarifa(tarifa, kwh, kw) {
   ];
 
   let detalleEnergia = [];
-  if (tarifa.energia?.tipo === "escalones") {
-    detalleEnergia = calcEnergiaEscalones(kwhSafe, tarifa.energia.escalones)
+  const energia = tarifa.energia || {};
+
+  if (energia.tipo === "escalones") {
+    const kwhTotal = Math.max(0, num(inputs.kwhTotal));
+    detalleEnergia = calcEnergiaEscalones(kwhTotal, energia.escalones)
+      .map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }));
+  } else if (energia.tipo === "doble_horario") {
+    const kwhPunta = Math.max(0, num(inputs.kwhPunta));
+    const kwhFuera = Math.max(0, num(inputs.kwhFueraPunta));
+    const precioP = num(energia.punta?.precioPorKWh);
+    const precioF = num(energia.fueraPunta?.precioPorKWh);
+
+    detalleEnergia = calcEnergiaDobleHorario(kwhPunta, precioP, kwhFuera, precioF)
       .map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }));
   } else {
-    throw new Error("Tipo de energía no soportado aún: " + tarifa.energia?.tipo);
+    throw new Error("Tipo de energía no soportado aún: " + (energia.tipo ?? "desconocido"));
   }
 
   const itemsAll = [...detalleCargoFijo, ...detallePotencia, ...detalleEnergia];
@@ -109,8 +130,10 @@ function calcularTarifa(tarifa, kwh, kw) {
 
 // ---------- UI ----------
 const tarifaSelect = document.getElementById("tarifaSelect");
-const kwhInput = document.getElementById("kwhInput");
 const kwInput = document.getElementById("kwInput");
+const energyInputs = document.getElementById("energyInputs");
+const warnBox = document.getElementById("warnBox");
+
 const calcBtn = document.getElementById("calcBtn");
 const resultCard = document.getElementById("resultCard");
 const detalleBody = document.getElementById("detalleBody");
@@ -151,6 +174,63 @@ function render(res, tarifa) {
   resultCard.style.display = "block";
 }
 
+function getTarifaActual() {
+  return DATA.tarifas.find(t => t.id === tarifaSelect.value);
+}
+
+function showWarn(msg) {
+  if (!msg) {
+    warnBox.style.display = "none";
+    warnBox.textContent = "";
+    return;
+  }
+  warnBox.style.display = "block";
+  warnBox.textContent = msg;
+}
+
+function renderEnergyInputsForTarifa(tarifa) {
+  const tipo = tarifa.energia?.tipo;
+
+  if (tipo === "escalones") {
+    energyInputs.innerHTML = `
+      <div class="row">
+        <div>
+          <label>Consumo mensual (kWh)</label>
+          <input id="kwhTotal" type="number" min="0" step="0.01" value="0" />
+        </div>
+        <div></div>
+      </div>
+    `;
+  } else if (tipo === "doble_horario") {
+    energyInputs.innerHTML = `
+      <div class="row">
+        <div>
+          <label>Consumo mensual Punta (kWh)</label>
+          <input id="kwhPunta" type="number" min="0" step="0.01" value="0" />
+        </div>
+        <div>
+          <label>Consumo mensual Fuera de Punta (kWh)</label>
+          <input id="kwhFueraPunta" type="number" min="0" step="0.01" value="0" />
+        </div>
+      </div>
+    `;
+  } else {
+    energyInputs.innerHTML = `<div class="muted">Esta tarifa aún no tiene inputs implementados.</div>`;
+  }
+}
+
+function validateTarifaInputs(tarifa, kw) {
+  // Advertencias simples de rango (no bloquea)
+  if (tarifa.id === "TRD") {
+    if (kw > 0 && kw < 3.5) return "TRD aplica para potencia contratada >= 3,5 kW.";
+    if (kw > 40) return "TRD aplica hasta 40 kW.";
+  }
+  if (tarifa.id === "residencial_simple") {
+    if (kw > 40) return "TRS aplica hasta 40 kW.";
+  }
+  return "";
+}
+
 function fillTarifas() {
   tarifaSelect.innerHTML = "";
   DATA.tarifas.forEach(t => {
@@ -161,9 +241,31 @@ function fillTarifas() {
   });
 }
 
+tarifaSelect.addEventListener("change", () => {
+  const t = getTarifaActual();
+  renderEnergyInputsForTarifa(t);
+  showWarn(validateTarifaInputs(t, num(kwInput.value)));
+  resultCard.style.display = "none";
+});
+
+kwInput.addEventListener("input", () => {
+  const t = getTarifaActual();
+  if (!t) return;
+  showWarn(validateTarifaInputs(t, num(kwInput.value)));
+});
+
 calcBtn.addEventListener("click", () => {
-  const tarifa = DATA.tarifas.find(t => t.id === tarifaSelect.value);
-  const res = calcularTarifa(tarifa, kwhInput.value, kwInput.value);
+  const tarifa = getTarifaActual();
+  if (!tarifa) return;
+
+  const inputs = {
+    kw: kwInput.value,
+    kwhTotal: document.getElementById("kwhTotal")?.value,
+    kwhPunta: document.getElementById("kwhPunta")?.value,
+    kwhFueraPunta: document.getElementById("kwhFueraPunta")?.value
+  };
+
+  const res = calcularTarifa(tarifa, inputs);
   render(res, tarifa);
 });
 
@@ -173,6 +275,11 @@ fetch("./tarifas.json", { cache: "no-store" })
   .then(json => {
     DATA = json;
     fillTarifas();
+
+    // Inicializar inputs según la primera tarifa
+    const t = getTarifaActual();
+    renderEnergyInputsForTarifa(t);
+    showWarn(validateTarifaInputs(t, num(kwInput.value)));
   })
   .catch(err => {
     console.error(err);
