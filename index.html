@@ -24,6 +24,8 @@
     .topbar { display:flex; justify-content: space-between; align-items: baseline; gap: 12px; }
     .topbar a { font-size: 13px; color:#0a58ca; text-decoration: none; }
     .topbar a:hover { text-decoration: underline; }
+
+    .warn { margin-top: 10px; padding: 10px; border-radius: 10px; border: 1px solid #ffe1a6; background: #fff7e6; color: #5a3b00; font-size: 13px; display:none; }
   </style>
 </head>
 <body>
@@ -31,7 +33,7 @@
     <div>
       <h1 style="margin:0;">Simulador de tarifas UTE (interno)</h1>
       <p class="muted" style="margin:6px 0 0 0;">
-        TRS (por ahora). IVA: cargo fijo NO; demás conceptos SÍ.
+        IVA: cargo fijo NO; demás conceptos SÍ.
       </p>
     </div>
     <div>
@@ -45,14 +47,18 @@
 
     <div class="row">
       <div>
-        <label>Consumo mensual (kWh)</label>
-        <input id="kwhInput" type="number" min="0" step="0.01" value="0" />
-      </div>
-      <div>
         <label>Potencia contratada (kW)</label>
         <input id="kwInput" type="number" min="0" step="0.01" value="0" />
       </div>
+      <div>
+        <label>&nbsp;</label>
+        <div class="muted">Los consumos de energía se cargan abajo según la tarifa.</div>
+      </div>
     </div>
+
+    <div id="energyInputs"></div>
+
+    <div class="warn" id="warnBox"></div>
 
     <button id="calcBtn">Calcular</button>
   </div>
