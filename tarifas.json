@@ -18,6 +18,22 @@
         "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
       },
       "notas": "Modalidad Residencial. Potencia contratada <= 40 kW."
+    },
+    {
+      "id": "TRD",
+      "nombre": "Tarifa Doble Horario Residencial (TRD) (3,5 a 40 kW)",
+      "cargoFijo": 488.0,
+      "potencia": { "precioPorkW": 83.2 },
+      "energia": {
+        "tipo": "doble_horario",
+        "punta": { "precioPorKWh": 12.034 },
+        "fueraPunta": { "precioPorKWh": 4.771 }
+      },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
+      },
+      "notas": "Residencial opcional. Potencia contratada >= 3,5 kW y <= 40 kW. (Este simulador pide kWh Punta y Fuera de Punta)."
     }
   ]
 }
