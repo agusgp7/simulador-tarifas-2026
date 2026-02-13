@@ -1,12 +1,13 @@
 // ================================
 // Simulador UTE (interno) - TRS
-// Ajustes de visualización pedidos por Agus:
-// - Energía: mostrar kWh facturados por escalón (no rangos)
+// Ajustes de visualización:
+// - Energía: mostrar kWh facturados por escalón
 // - No mostrar "(IVA)"
-// - Decimales con coma (formato es-UY)
-// - Secciones: Cargo Fijo / Potencia / Energía / Subtotales
-// - Subtotales: No Gravado, Gravado 22%, IVA
+// - Decimales con coma (es-UY)
+// - Secciones con títulos en negrita
+// - Subtotales: No Gravado / Gravado 22% / IVA
 // - TOTAL en negrita
+// - Corrección: signo $ en potencia
 // ================================
 
 const DATA = {
@@ -42,32 +43,38 @@ const DATA = {
 function fmtMoneyUY(n) {
   return new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU" }).format(n);
 }
+
 function fmtNumberUY(n, dec = 2) {
   return new Intl.NumberFormat("es-UY", {
     minimumFractionDigits: dec,
     maximumFractionDigits: dec
   }).format(n);
 }
+
 function fmtKwh(n) {
-  // kWh normalmente entero; si llega decimal, lo muestra con coma sin miles raros
   const isInt = Math.abs(n - Math.round(n)) < 1e-9;
   return isInt ? fmtNumberUY(n, 0) : fmtNumberUY(n, 2);
 }
+
 function fmtKw(n) {
-  // kW puede ser decimal (ej 4,5)
   const isInt = Math.abs(n - Math.round(n)) < 1e-9;
   return isInt ? fmtNumberUY(n, 0) : fmtNumberUY(n, 1);
 }
+
 function fmtPrice(n) {
-  // precios de energía tipo 6,744 (3 decimales)
   return fmtNumberUY(n, 3);
 }
+
+function fmtPricePotencia(n) {
+  return fmtNumberUY(n, 1);
+}
+
 function num(x) {
   const v = Number(x);
   return Number.isFinite(v) ? v : 0;
 }
 
-// ---------- Cálculo energía por escalones ----------
+// ---------- Energía por escalones ----------
 function calcEnergiaEscalones(kwh, escalones) {
   let restante = Math.max(0, kwh);
   let energia = 0;
@@ -81,10 +88,9 @@ function calcEnergiaEscalones(kwh, escalones) {
 
     idx += 1;
 
-    const hasta = esc.hastaIncluye; // number o null
+    const hasta = esc.hastaIncluye;
     const topeActual = (hasta === null) ? Infinity : hasta;
 
-    // Capacidad del tramo (ej: 1er tramo 100; 2do tramo 500; 3er tramo infinito)
     const maxEnTramo = (topeActual === Infinity)
       ? Infinity
       : Math.max(0, topeActual - anteriorHasta);
@@ -94,7 +100,6 @@ function calcEnergiaEscalones(kwh, escalones) {
 
     energia += costoTramo;
 
-    // Nombre del escalón como pediste
     const nombreEscalon =
       idx === 1 ? "1er Escalón" :
       idx === 2 ? "2do Escalón" :
@@ -120,12 +125,10 @@ function calcularTarifa(tarifa, kwh, kw) {
 
   const tasaIva = num(tarifa.iva?.tasa ?? 0.22);
 
-  // Componentes base
   const cargoFijo = num(tarifa.cargoFijo);
   const potenciaPrecio = num(tarifa.potencia?.precioPorkW);
   const potencia = kwSafe * potenciaPrecio;
 
-  // Energía
   let energia = 0;
   let detalleEnergia = [];
 
@@ -137,32 +140,32 @@ function calcularTarifa(tarifa, kwh, kw) {
     throw new Error("Tipo de energía no soportado aún: " + tarifa.energia?.tipo);
   }
 
-  // IVA aplicabilidad (según lo que definiste)
-  const ivaAplicaCargoFijo = !!tarifa.iva?.aplica?.cargoFijo; // false
-  const ivaAplicaPotencia  = !!tarifa.iva?.aplica?.potencia;  // true
-  const ivaAplicaEnergia   = !!tarifa.iva?.aplica?.energia;   // true
+  const ivaAplicaCargoFijo = !!tarifa.iva?.aplica?.cargoFijo;
+  const ivaAplicaPotencia  = !!tarifa.iva?.aplica?.potencia;
+  const ivaAplicaEnergia   = !!tarifa.iva?.aplica?.energia;
 
-  // Detalle por componentes (sin “(IVA)”)
   const detalleCargoFijo = [
     { concepto: "Cargo fijo mensual", importe: cargoFijo, aplicaIva: ivaAplicaCargoFijo }
   ];
 
+  // ✅ CORRECCIÓN AQUÍ → ahora muestra "$" delante del precio unitario
   const detallePotencia = [
-    { concepto: `${fmtKw(kwSafe)} kW x ${fmtNumberUY(potenciaPrecio, 1)}`, importe: potencia, aplicaIva: ivaAplicaPotencia }
+    { 
+      concepto: `${fmtKw(kwSafe)} kW x $ ${fmtPricePotencia(potenciaPrecio)}`, 
+      importe: potencia, 
+      aplicaIva: ivaAplicaPotencia 
+    }
   ];
 
-  // detalleEnergia ya viene con concepto "Escalón X kWh x $ precio"
   detalleEnergia = detalleEnergia.map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }));
 
-  // Totales
   const itemsAll = [...detalleCargoFijo, ...detallePotencia, ...detalleEnergia];
-  const subtotal = itemsAll.reduce((acc, r) => acc + r.importe, 0);
 
   const importeGravado = itemsAll.filter(r => r.aplicaIva).reduce((acc, r) => acc + r.importe, 0);
   const importeNoGravado = itemsAll.filter(r => !r.aplicaIva).reduce((acc, r) => acc + r.importe, 0);
 
   const iva = importeGravado * tasaIva;
-  const total = subtotal + iva;
+  const total = importeNoGravado + importeGravado + iva;
 
   return {
     detalleCargoFijo,
@@ -218,25 +221,20 @@ function addRow(concepto, importe) {
 function render(res, tarifa) {
   detalleBody.innerHTML = "";
 
-  // CARGO FIJO
   addSection("CARGO FIJO");
-  for (const r of res.detalleCargoFijo) addRow(r.concepto, r.importe);
+  res.detalleCargoFijo.forEach(r => addRow(r.concepto, r.importe));
 
-  // CARGO POTENCIA CONTRATADA
   addSection("CARGO POTENCIA CONTRATADA");
-  for (const r of res.detallePotencia) addRow(r.concepto, r.importe);
+  res.detallePotencia.forEach(r => addRow(r.concepto, r.importe));
 
-  // CARGO ENERGIA MENSUAL
   addSection("CARGO ENERGIA MENSUAL");
-  for (const r of res.detalleEnergia) addRow(r.concepto, r.importe);
+  res.detalleEnergia.forEach(r => addRow(r.concepto, r.importe));
 
-  // SUBTOTALES
   addSection("SUBTOTALES");
   addRow("Importe No Gravado", res.importeNoGravado);
   addRow("Importe Gravado 22%", res.importeGravado);
   addRow("IVA", res.iva);
 
-  // TOTAL
   totalOut.textContent = fmtMoneyUY(res.total);
 
   notaTarifa.textContent = tarifa.notas || "";
