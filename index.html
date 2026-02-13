@@ -18,32 +18,26 @@
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 700px){ .row{ grid-template-columns: 1fr; } }
 
-    /* Section rows */
-    .section-row td {
-      border-bottom: none;
-      padding-top: 14px;
-      padding-bottom: 6px;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
+    .section-row td { border-bottom: none; padding-top: 14px; padding-bottom: 6px; font-weight: 800; text-transform: uppercase; }
+    .grand-total { margin-top: 14px; display:flex; justify-content: space-between; align-items: baseline; font-weight: 900; font-size: 18px; padding-top: 12px; border-top: 2px solid #111; }
 
-    .grand-total {
-      margin-top: 14px;
-      display:flex;
-      justify-content: space-between;
-      align-items: baseline;
-      font-weight: 900;
-      font-size: 18px;
-      padding-top: 12px;
-      border-top: 2px solid #111;
-    }
+    .topbar { display:flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .topbar a { font-size: 13px; color:#0a58ca; text-decoration: none; }
+    .topbar a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>Simulador de tarifas UTE (interno)</h1>
-  <p class="muted">
-    Versión inicial: Residencial Simple. (IVA: cargo fijo NO; demás conceptos SÍ)
-  </p>
+  <div class="topbar">
+    <div>
+      <h1 style="margin:0;">Simulador de tarifas UTE (interno)</h1>
+      <p class="muted" style="margin:6px 0 0 0;">
+        TRS (por ahora). IVA: cargo fijo NO; demás conceptos SÍ.
+      </p>
+    </div>
+    <div>
+      <a href="./admin.html">Panel de precios</a>
+    </div>
+  </div>
 
   <div class="card">
     <label>Tarifa</label>
