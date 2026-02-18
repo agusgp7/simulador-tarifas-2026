@@ -1,7 +1,7 @@
 {
   "tarifas": [
     {
-      "id": "residencial_simple",
+      "id": "TRS",
       "nombre": "Tarifa Residencial Simple (<= 40 kW, 230/400V)",
       "cargoFijo": 324.9,
       "potencia": { "precioPorkW": 83.2 },
