@@ -13,13 +13,14 @@
           { "hastaIncluye": null, "precioPorKWh": 10.539 }
         ]
       },
-      "reactiva": {
-        "modelo": "grupo1_k1",
-        "defaultCalcula": false
-      },
+      "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
       "iva": {
         "tasa": 0.22,
         "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
+      },
+      "ui": {
+        "tituloCargoFijo": "CARGO FIJO",
+        "labelCargoFijo": "Cargo fijo mensual"
       },
       "notas": "Modalidad Residencial. Potencia contratada <= 40 kW."
     },
@@ -37,6 +38,10 @@
         "tasa": 0.22,
         "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
       },
+      "ui": {
+        "tituloCargoFijo": "CARGO FIJO",
+        "labelCargoFijo": "Cargo fijo mensual"
+      },
       "notas": "Residencial opcional. Potencia contratada >= 3,5 kW y <= 40 kW."
     },
     {
@@ -47,19 +52,43 @@
       "energia": {
         "tipo": "escalones",
         "escalones": [
-          { "hastaIncluye": 1000, "precioPorKWh": 5.640 },
+          { "hastaIncluye": 1000, "precioPorKWh": 5.64 },
           { "hastaIncluye": null, "precioPorKWh": 6.473 }
         ]
       },
-      "reactiva": {
-        "modelo": "grupo1_k1",
-        "defaultCalcula": false
-      },
+      "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
       "iva": {
         "tasa": 0.22,
         "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true }
       },
+      "ui": {
+        "tituloCargoFijo": "CARGO FIJO",
+        "labelCargoFijo": "Cargo fijo mensual"
+      },
       "notas": "No Residencial ni Alumbrado Público. Todos los conceptos llevan IVA."
+    },
+    {
+      "id": "TCB",
+      "nombre": "Tarifa de Consumo Básico (TCB) (<= 3,7 kW)",
+      "cargoFijo": 633.9,
+      "energia": {
+        "tipo": "rangos_absolutos",
+        "rangos": [
+          { "desdeIncluye": 101, "hastaIncluye": 140, "precioPorKWh": 8.512 },
+          { "desdeIncluye": 141, "hastaIncluye": 350, "precioPorKWh": 12.853 },
+          { "desdeIncluye": 351, "hastaIncluye": null, "precioPorKWh": 10.539 }
+        ]
+      },
+      "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": false, "energia": true, "reactiva": true }
+      },
+      "ui": {
+        "tituloCargoFijo": "CARGO MENSUAL",
+        "labelCargoFijo": "Cargo mensual"
+      },
+      "notas": "Incluye hasta 100 kWh/mes dentro del cargo mensual. El cargo mensual NO grava IVA."
     }
   ]
 }
