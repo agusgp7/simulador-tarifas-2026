@@ -2,6 +2,7 @@
 // Simulador UTE (interno)
 // - Lee tarifas desde tarifas.json
 // - Soporta: escalones (TRS) y doble_horario (TRD)
+// - Reactiva Grupo 1 (TRS/TGS/TCB a futuro): recargo k1 sobre importe energía activa (sin IVA)
 // ================================
 
 let DATA = { tarifas: [] };
@@ -23,6 +24,7 @@ function fmtKw(n) {
 }
 function fmtPriceKwh(n) { return fmtNumberUY(n, 3); }
 function fmtPriceKw(n) { return fmtNumberUY(n, 1); }
+function fmtPercent(n) { return fmtNumberUY(n, 2) + "%"; } // n ya viene en %
 function num(x) {
   const v = Number(x);
   return Number.isFinite(v) ? v : 0;
@@ -78,6 +80,35 @@ function calcEnergiaDobleHorario(kwhPunta, precioPunta, kwhFuera, precioFuera) {
   ];
 }
 
+// ---------- Reactiva Grupo 1 (k1 / k1 adicional) ----------
+function calcReactivaGrupo1(eaKwh, erKvarh, energiaActivaImporteSinIva) {
+  const ea = Math.max(0, eaKwh);
+  const er = Math.max(0, erKvarh);
+
+  if (ea <= 0 || er <= 0) {
+    return { coefTotal: 0, k1: 0, k1ad: 0, ratio: 0, cargo: 0 };
+    // si no hay activa o reactiva, no cobramos
+  }
+
+  const ratio = er / ea; // er/ea
+
+  let k1 = 0;
+  let k1ad = 0;
+
+  if (ratio > 0.426) {
+    k1 = 0.4 * (ratio - 0.426);
+  }
+  if (ratio > 0.7) {
+    k1ad = 0.6 * (ratio - 0.7);
+  }
+
+  const coefTotal = k1 + k1ad;
+  const cargo = coefTotal * Math.max(0, energiaActivaImporteSinIva);
+
+  return { coefTotal, k1, k1ad, ratio, cargo };
+}
+
+// ---------- Cálculo general ----------
 function calcularTarifa(tarifa, inputs) {
   const kwSafe = Math.max(0, num(inputs.kw));
 
@@ -90,6 +121,7 @@ function calcularTarifa(tarifa, inputs) {
   const ivaAplicaCargoFijo = !!tarifa.iva?.aplica?.cargoFijo; // false
   const ivaAplicaPotencia  = !!tarifa.iva?.aplica?.potencia;  // true
   const ivaAplicaEnergia   = !!tarifa.iva?.aplica?.energia;   // true
+  const ivaAplicaReactiva  = !!tarifa.iva?.aplica?.reactiva;  // true
 
   const detalleCargoFijo = [
     { concepto: "Cargo fijo mensual", importe: cargoFijo, aplicaIva: ivaAplicaCargoFijo }
@@ -102,22 +134,60 @@ function calcularTarifa(tarifa, inputs) {
   let detalleEnergia = [];
   const energia = tarifa.energia || {};
 
+  // Importante: necesitamos el importe de energía activa (sin IVA) para la reactiva grupo 1
+  let eaKwhTotal = 0;
+  let energiaActivaImporteSinIva = 0;
+
   if (energia.tipo === "escalones") {
     const kwhTotal = Math.max(0, num(inputs.kwhTotal));
-    detalleEnergia = calcEnergiaEscalones(kwhTotal, energia.escalones)
-      .map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }));
+    eaKwhTotal = kwhTotal;
+
+    const det = calcEnergiaEscalones(kwhTotal, energia.escalones);
+    energiaActivaImporteSinIva = det.reduce((a, r) => a + r.importe, 0);
+
+    detalleEnergia = det.map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }));
+
   } else if (energia.tipo === "doble_horario") {
     const kwhPunta = Math.max(0, num(inputs.kwhPunta));
     const kwhFuera = Math.max(0, num(inputs.kwhFueraPunta));
+    eaKwhTotal = kwhPunta + kwhFuera;
+
     const precioP = num(energia.punta?.precioPorKWh);
     const precioF = num(energia.fueraPunta?.precioPorKWh);
 
-    detalleEnergia = calcEnergiaDobleHorario(kwhPunta, precioP, kwhFuera, precioF)
-      .map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }));
+    const det = calcEnergiaDobleHorario(kwhPunta, precioP, kwhFuera, precioF);
+    energiaActivaImporteSinIva = det.reduce((a, r) => a + r.importe, 0);
+
+    detalleEnergia = det.map(d => ({ ...d, aplicaIva: ivaAplicaEnergia }));
   } else {
     throw new Error("Tipo de energía no soportado aún: " + (energia.tipo ?? "desconocido"));
   }
 
+  // ----- Reactiva (solo si la tarifa tiene modelo y el usuario habilitó cálculo) -----
+  const reactivaCfg = tarifa.reactiva;
+  const calculaReactiva = !!inputs.calculaReactiva;
+
+  if (reactivaCfg?.modelo === "grupo1_k1" && calculaReactiva) {
+    const er = Math.max(0, num(inputs.kvarh));
+    const resR = calcReactivaGrupo1(eaKwhTotal, er, energiaActivaImporteSinIva);
+
+    const pct = resR.coefTotal * 100; // porcentaje
+    // Redondeo de cargo a 2 decimales como pediste
+    const cargoRounded = Math.round((resR.cargo + Number.EPSILON) * 100) / 100;
+
+    // Solo mostramos si hay algo para cobrar (>0, aunque podría ser 0)
+    if (cargoRounded > 0) {
+      detalleEnergia.push({
+        concepto: `Energía Reactiva ${fmtPercent(pct)} x ${fmtMoneyUY(energiaActivaImporteSinIva)}`,
+        importe: cargoRounded,
+        aplicaIva: ivaAplicaReactiva
+      });
+    } else {
+      // Si querés que muestre igualmente "Energía Reactiva 0%" lo activamos después.
+    }
+  }
+
+  // Totales
   const itemsAll = [...detalleCargoFijo, ...detallePotencia, ...detalleEnergia];
   const importeGravado = itemsAll.filter(r => r.aplicaIva).reduce((a, r) => a + r.importe, 0);
   const importeNoGravado = itemsAll.filter(r => !r.aplicaIva).reduce((a, r) => a + r.importe, 0);
@@ -190,6 +260,25 @@ function showWarn(msg) {
 
 function renderEnergyInputsForTarifa(tarifa) {
   const tipo = tarifa.energia?.tipo;
+  const reactivaModelo = tarifa.reactiva?.modelo;
+
+  // bloque reactiva grupo1
+  const reactivaBlockGrupo1 = (reactivaModelo === "grupo1_k1") ? `
+    <div class="inline">
+      <input id="calculaReactiva" type="checkbox" ${tarifa.reactiva?.defaultCalcula ? "checked" : ""} />
+      <label for="calculaReactiva" style="margin:0;">Calcula Reactiva</label>
+    </div>
+    <div id="reactivaInputs" style="display:none;">
+      <div class="row">
+        <div>
+          <label>Energía reactiva (kVArh)</label>
+          <input id="kvarh" type="number" min="0" step="0.01" value="0" />
+        </div>
+        <div></div>
+      </div>
+      <div class="muted">Grupo 1: recargo k1 sobre importe de energía activa (sin IVA).</div>
+    </div>
+  ` : "";
 
   if (tipo === "escalones") {
     energyInputs.innerHTML = `
@@ -200,6 +289,7 @@ function renderEnergyInputsForTarifa(tarifa) {
         </div>
         <div></div>
       </div>
+      ${reactivaBlockGrupo1}
     `;
   } else if (tipo === "doble_horario") {
     energyInputs.innerHTML = `
@@ -213,14 +303,23 @@ function renderEnergyInputsForTarifa(tarifa) {
           <input id="kwhFueraPunta" type="number" min="0" step="0.01" value="0" />
         </div>
       </div>
+      ${reactivaBlockGrupo1}
     `;
   } else {
     energyInputs.innerHTML = `<div class="muted">Esta tarifa aún no tiene inputs implementados.</div>`;
   }
+
+  // Hook checkbox reactiva (si existe)
+  const chk = document.getElementById("calculaReactiva");
+  const rbox = document.getElementById("reactivaInputs");
+  if (chk && rbox) {
+    const sync = () => { rbox.style.display = chk.checked ? "block" : "none"; };
+    chk.addEventListener("change", () => { sync(); resultCard.style.display = "none"; });
+    sync();
+  }
 }
 
 function validateTarifaInputs(tarifa, kw) {
-  // Advertencias simples de rango (no bloquea)
   if (tarifa.id === "TRD") {
     if (kw > 0 && kw < 3.5) return "TRD aplica para potencia contratada >= 3,5 kW.";
     if (kw > 40) return "TRD aplica hasta 40 kW.";
@@ -262,7 +361,9 @@ calcBtn.addEventListener("click", () => {
     kw: kwInput.value,
     kwhTotal: document.getElementById("kwhTotal")?.value,
     kwhPunta: document.getElementById("kwhPunta")?.value,
-    kwhFueraPunta: document.getElementById("kwhFueraPunta")?.value
+    kwhFueraPunta: document.getElementById("kwhFueraPunta")?.value,
+    calculaReactiva: document.getElementById("calculaReactiva")?.checked ?? false,
+    kvarh: document.getElementById("kvarh")?.value
   };
 
   const res = calcularTarifa(tarifa, inputs);
@@ -276,7 +377,6 @@ fetch("./tarifas.json", { cache: "no-store" })
     DATA = json;
     fillTarifas();
 
-    // Inicializar inputs según la primera tarifa
     const t = getTarifaActual();
     renderEnergyInputsForTarifa(t);
     showWarn(validateTarifaInputs(t, num(kwInput.value)));
