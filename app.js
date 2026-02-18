@@ -324,7 +324,7 @@ function validateTarifaInputs(tarifa, kw) {
     if (kw > 0 && kw < 3.5) return "TRD aplica para potencia contratada >= 3,5 kW.";
     if (kw > 40) return "TRD aplica hasta 40 kW.";
   }
-  if (tarifa.id === "residencial_simple") {
+  if (tarifa.id === "TRS") {
     if (kw > 40) return "TRS aplica hasta 40 kW.";
   }
   return "";
