@@ -18,10 +18,7 @@
         "tasa": 0.22,
         "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
       },
-      "ui": {
-        "tituloCargoFijo": "CARGO FIJO",
-        "labelCargoFijo": "Cargo fijo mensual"
-      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "Modalidad Residencial. Potencia contratada <= 40 kW."
     },
     {
@@ -38,11 +35,26 @@
         "tasa": 0.22,
         "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
       },
-      "ui": {
-        "tituloCargoFijo": "CARGO FIJO",
-        "labelCargoFijo": "Cargo fijo mensual"
-      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "Residencial opcional. Potencia contratada >= 3,5 kW y <= 40 kW."
+    },
+    {
+      "id": "TRT",
+      "nombre": "Tarifa Triple Horario Residencial (TRT) (3,5 a 40 kW)",
+      "cargoFijo": 488.0,
+      "potencia": { "precioPorkW": 83.2 },
+      "energia": {
+        "tipo": "triple_horario",
+        "valle": { "precioPorKWh": 2.443 },
+        "llano": { "precioPorKWh": 5.172 },
+        "punta": { "precioPorKWh": 12.034 }
+      },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "Para esta versión: cargá los kWh de punta de fines de semana/feriados como Llano (punta fin de semana = llano)."
     },
     {
       "id": "TGS",
@@ -61,10 +73,7 @@
         "tasa": 0.22,
         "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true }
       },
-      "ui": {
-        "tituloCargoFijo": "CARGO FIJO",
-        "labelCargoFijo": "Cargo fijo mensual"
-      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "No Residencial ni Alumbrado Público. Todos los conceptos llevan IVA."
     },
     {
@@ -84,10 +93,7 @@
         "tasa": 0.22,
         "aplica": { "cargoFijo": false, "potencia": false, "energia": true, "reactiva": true }
       },
-      "ui": {
-        "tituloCargoFijo": "CARGO MENSUAL",
-        "labelCargoFijo": "Cargo mensual"
-      },
+      "ui": { "tituloCargoFijo": "CARGO MENSUAL", "labelCargoFijo": "Cargo mensual" },
       "notas": "Incluye hasta 100 kWh/mes dentro del cargo mensual. El cargo mensual NO grava IVA."
     }
   ]
