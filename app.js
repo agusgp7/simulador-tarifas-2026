@@ -5,7 +5,9 @@
 // - doble_horario (TRD)
 // - triple_horario (TRT)
 // - rangos_absolutos (TCB)
-// Reactiva Grupo 1 solo donde corresponde (NO en TCB)
+// Reactiva:
+// - Grupo 1: TRS/TGS (Er/Ea sobre energía total; aplica a importe energía total sin IVA)
+// - Grupo 2 (TRD): Er/Ea total (punta+fuera), coef aplica sobre importe energía PUNTA (sin IVA), bonifica o penaliza
 // ================================
 
 let DATA = { tarifas: [] };
@@ -27,14 +29,15 @@ function fmtKw(n) {
 }
 function fmtPriceKwh(n) { return fmtNumberUY(n, 3); }
 function fmtPriceKw(n) { return fmtNumberUY(n, 1); }
-function fmtPercent(n) { return fmtNumberUY(n, 2) + "%"; }
+function fmtPercentSigned(pct) {
+  // pct puede ser negativo; en es-UY sale -3,46
+  return fmtNumberUY(pct, 2) + "%";
+}
 function num(x) {
   const v = Number(x);
   return Number.isFinite(v) ? v : 0;
 }
-function round2(x) {
-  return Math.round((x + Number.EPSILON) * 100) / 100;
-}
+function round2(x) { return Math.round((x + Number.EPSILON) * 100) / 100; }
 
 // ---------- Energía por escalones ----------
 function calcEnergiaEscalones(kwh, escalones) {
@@ -107,10 +110,17 @@ function calcEnergiaDobleHorario(kwhPunta, precioPunta, kwhFuera, precioFuera) {
   const kp = Math.max(0, kwhPunta);
   const kf = Math.max(0, kwhFuera);
 
-  return [
-    { concepto: `Punta ${fmtKwh(kp, 2)} kWh x $ ${fmtPriceKwh(precioPunta)}`, importe: kp * precioPunta },
-    { concepto: `Fuera de Punta ${fmtKwh(kf, 2)} kWh x $ ${fmtPriceKwh(precioFuera)}`, importe: kf * precioFuera }
-  ];
+  const impPunta = kp * precioPunta;
+  const impFuera = kf * precioFuera;
+
+  return {
+    detalle: [
+      { concepto: `Punta ${fmtKwh(kp, 2)} kWh x $ ${fmtPriceKwh(precioPunta)}`, importe: impPunta },
+      { concepto: `Fuera de Punta ${fmtKwh(kf, 2)} kWh x $ ${fmtPriceKwh(precioFuera)}`, importe: impFuera }
+    ],
+    eaTotalKwh: kp + kf,
+    importePuntaSinIva: impPunta
+  };
 }
 
 // ---------- Energía triple horario (TRT) ----------
@@ -119,17 +129,20 @@ function calcEnergiaTripleHorario(kwhValle, precioValle, kwhLlano, precioLlano, 
   const kl = Math.max(0, kwhLlano);
   const kp = Math.max(0, kwhPunta);
 
-  return [
-    { concepto: `Valle ${fmtKwh(kv, 2)} kWh x $ ${fmtPriceKwh(precioValle)}`, importe: kv * precioValle },
-    { concepto: `Llano ${fmtKwh(kl, 2)} kWh x $ ${fmtPriceKwh(precioLlano)}`, importe: kl * precioLlano },
-    { concepto: `Punta ${fmtKwh(kp, 2)} kWh x $ ${fmtPriceKwh(precioPunta)}`, importe: kp * precioPunta }
-  ];
+  return {
+    detalle: [
+      { concepto: `Valle ${fmtKwh(kv, 2)} kWh x $ ${fmtPriceKwh(precioValle)}`, importe: kv * precioValle },
+      { concepto: `Llano ${fmtKwh(kl, 2)} kWh x $ ${fmtPriceKwh(precioLlano)}`, importe: kl * precioLlano },
+      { concepto: `Punta ${fmtKwh(kp, 2)} kWh x $ ${fmtPriceKwh(precioPunta)}`, importe: kp * precioPunta }
+    ],
+    eaTotalKwh: kv + kl + kp
+  };
 }
 
 // ---------- Reactiva Grupo 1 ----------
-function calcReactivaGrupo1(eaKwh, erKvarh, energiaActivaImporteSinIva) {
-  const ea = Math.max(0, eaKwh);
-  const er = Math.max(0, erKvarh);
+function calcReactivaGrupo1(eaKwhTotal, erKvarhTotal, energiaActivaImporteSinIva) {
+  const ea = Math.max(0, eaKwhTotal);
+  const er = Math.max(0, erKvarhTotal);
   if (ea <= 0 || er <= 0) return { coefTotal: 0, cargo: 0 };
 
   const ratio = er / ea;
@@ -146,6 +159,28 @@ function calcReactivaGrupo1(eaKwh, erKvarh, energiaActivaImporteSinIva) {
   return { coefTotal, cargo };
 }
 
+// ---------- Reactiva Grupo 2 (TRD) ----------
+function calcReactivaGrupo2TRD(eaTotalKwh, erTotalKvarh, importePuntaSinIva) {
+  const ea = Math.max(0, eaTotalKwh);
+  const er = Math.max(0, erTotalKvarh);
+  if (ea <= 0 || er <= 0) return { coefTotal: 0, cargo: 0 };
+
+  const ratio = er / ea;
+
+  // k1 = 36 × (ratio - 0,426) × 0,01 => 0,36*(ratio-0,426)
+  const k1 = 0.36 * (ratio - 0.426);
+
+  // k1ad = (100-36) × (ratio - 0,7) × 0,01 => 0,64*(ratio-0,7) si ratio>0,7
+  const k1ad = (ratio > 0.7) ? (0.64 * (ratio - 0.7)) : 0;
+
+  const coefTotal = k1 + k1ad;
+
+  // coef puede ser negativo => bonificación
+  const cargo = coefTotal * Math.max(0, importePuntaSinIva);
+
+  return { coefTotal, cargo };
+}
+
 // ---------- Cálculo general ----------
 function calcularTarifa(tarifa, inputs) {
   const tasaIva = num(tarifa.iva?.tasa ?? 0.22);
@@ -155,7 +190,6 @@ function calcularTarifa(tarifa, inputs) {
   const tituloCargoFijo = ui.tituloCargoFijo || "CARGO FIJO";
   const labelCargoFijo = ui.labelCargoFijo || "Cargo fijo mensual";
 
-  // Cargo fijo / mensual
   const detalleCargo = [];
   if (Number.isFinite(Number(tarifa.cargoFijo)) && num(tarifa.cargoFijo) !== 0) {
     detalleCargo.push({
@@ -166,64 +200,62 @@ function calcularTarifa(tarifa, inputs) {
     });
   }
 
-  // Potencia (solo si aplica)
   const detallePotencia = [];
   if (tarifa.potencia && Number.isFinite(Number(tarifa.potencia.precioPorkW)) && num(tarifa.potencia.precioPorkW) > 0) {
     const kw = Math.max(0, num(inputs.kw));
     const precio = num(tarifa.potencia.precioPorkW);
-    const imp = kw * precio;
-
     detallePotencia.push({
       concepto: `${fmtKw(kw)} kW x $ ${fmtPriceKw(precio)}`,
-      importe: imp,
+      importe: kw * precio,
       aplicaIva: !!aplica.potencia
     });
   }
 
-  // Energía
   const energia = tarifa.energia || {};
   let detalleEnergia = [];
 
-  let eaKwhTotal = 0;
+  let eaTotalKwh = 0;
   let energiaActivaImporteSinIva = 0;
+  let importePuntaSinIva = 0; // solo TRD
 
   if (energia.tipo === "escalones") {
     const kwh = Math.max(0, num(inputs.kwhTotal));
-    eaKwhTotal = kwh;
+    eaTotalKwh = kwh;
 
     const det = calcEnergiaEscalones(kwh, energia.escalones || []);
     energiaActivaImporteSinIva = det.reduce((a, r) => a + r.importe, 0);
     detalleEnergia = det.map(r => ({ ...r, aplicaIva: !!aplica.energia }));
 
   } else if (energia.tipo === "doble_horario") {
-    const kwhPunta = Math.max(0, num(inputs.kwhPunta));
-    const kwhFuera = Math.max(0, num(inputs.kwhFueraPunta));
-    eaKwhTotal = kwhPunta + kwhFuera;
+    const kwhPuntaIn = Math.max(0, num(inputs.kwhPunta));
+    const kwhFueraIn = Math.max(0, num(inputs.kwhFueraPunta));
 
     const precioP = num(energia.punta?.precioPorKWh);
     const precioF = num(energia.fueraPunta?.precioPorKWh);
 
-    const det = calcEnergiaDobleHorario(kwhPunta, precioP, kwhFuera, precioF);
-    energiaActivaImporteSinIva = det.reduce((a, r) => a + r.importe, 0);
-    detalleEnergia = det.map(r => ({ ...r, aplicaIva: !!aplica.energia }));
+    const res = calcEnergiaDobleHorario(kwhPuntaIn, precioP, kwhFueraIn, precioF);
+    detalleEnergia = res.detalle.map(r => ({ ...r, aplicaIva: !!aplica.energia }));
+    eaTotalKwh = res.eaTotalKwh;
+    importePuntaSinIva = res.importePuntaSinIva;
+    energiaActivaImporteSinIva = res.detalle.reduce((a, r) => a + r.importe, 0);
 
   } else if (energia.tipo === "triple_horario") {
     const kwhValle = Math.max(0, num(inputs.kwhValle));
     const kwhLlano = Math.max(0, num(inputs.kwhLlano));
     const kwhPunta = Math.max(0, num(inputs.kwhPunta3));
-    eaKwhTotal = kwhValle + kwhLlano + kwhPunta;
 
     const precioV = num(energia.valle?.precioPorKWh);
     const precioL = num(energia.llano?.precioPorKWh);
     const precioP = num(energia.punta?.precioPorKWh);
 
-    const det = calcEnergiaTripleHorario(kwhValle, precioV, kwhLlano, precioL, kwhPunta, precioP);
-    energiaActivaImporteSinIva = det.reduce((a, r) => a + r.importe, 0);
-    detalleEnergia = det.map(r => ({ ...r, aplicaIva: !!aplica.energia }));
+    const res = calcEnergiaTripleHorario(kwhValle, precioV, kwhLlano, precioL, kwhPunta, precioP);
+    detalleEnergia = res.detalle.map(r => ({ ...r, aplicaIva: !!aplica.energia }));
+    eaTotalKwh = res.eaTotalKwh;
+    energiaActivaImporteSinIva = res.detalle.reduce((a, r) => a + r.importe, 0);
 
   } else if (energia.tipo === "rangos_absolutos") {
     const kwh = Math.max(0, num(inputs.kwhTotal));
-    eaKwhTotal = kwh;
+    eaTotalKwh = kwh;
 
     const det = calcEnergiaRangosAbsolutos(kwh, energia.rangos || []);
     energiaActivaImporteSinIva = det.reduce((a, r) => a + r.importe, 0);
@@ -233,22 +265,43 @@ function calcularTarifa(tarifa, inputs) {
     throw new Error("Tipo de energía no soportado: " + (energia.tipo ?? "desconocido"));
   }
 
-  // Reactiva Grupo 1: NO en TCB (y TRT por ahora no la inventamos: si más adelante aplica, lo activamos)
-  const reactivaCfg = tarifa.reactiva;
-  const showReactivaUI = (tarifa.id !== "TCB") && (reactivaCfg?.modelo === "grupo1_k1");
-  if (showReactivaUI && !!inputs.calculaReactiva) {
-    const er = Math.max(0, num(inputs.kvarh));
-    const rr = calcReactivaGrupo1(eaKwhTotal, er, energiaActivaImporteSinIva);
+  // Reactiva: NO en TCB
+  if (tarifa.id !== "TCB" && !!inputs.calculaReactiva) {
+    const modelo = tarifa.reactiva?.modelo;
 
-    const pct = rr.coefTotal * 100;
-    const cargo = round2(rr.cargo);
+    // Grupo 1
+    if (modelo === "grupo1_k1") {
+      const er = Math.max(0, num(inputs.kvarh));
+      const rr = calcReactivaGrupo1(eaTotalKwh, er, energiaActivaImporteSinIva);
 
-    if (cargo > 0) {
-      detalleEnergia.push({
-        concepto: `Energía Reactiva ${fmtPercent(pct)} x ${fmtMoneyUY(energiaActivaImporteSinIva)}`,
-        importe: cargo,
-        aplicaIva: !!aplica.reactiva
-      });
+      const pct = rr.coefTotal * 100;
+      const cargo = round2(rr.cargo);
+
+      if (cargo !== 0) {
+        detalleEnergia.push({
+          concepto: `Energía Reactiva ${fmtPercentSigned(pct)} x ${fmtMoneyUY(energiaActivaImporteSinIva)}`,
+          importe: cargo,
+          aplicaIva: !!aplica.reactiva
+        });
+      }
+    }
+
+    // Grupo 2 TRD
+    if (modelo === "grupo2_trd") {
+      const erTotal = Math.max(0, num(inputs.kvarh)); // reactiva total
+      const rr = calcReactivaGrupo2TRD(eaTotalKwh, erTotal, importePuntaSinIva);
+
+      const pct = rr.coefTotal * 100;
+      const cargo = round2(rr.cargo);
+
+      // si no hay punta, el importe sobre el que aplica es 0 => no mostramos línea
+      if (importePuntaSinIva > 0 && cargo !== 0) {
+        detalleEnergia.push({
+          concepto: `Energía Reactiva ${fmtPercentSigned(pct)} x ${fmtMoneyUY(importePuntaSinIva)}`,
+          importe: cargo,
+          aplicaIva: !!aplica.reactiva
+        });
+      }
     }
   }
 
@@ -260,16 +313,7 @@ function calcularTarifa(tarifa, inputs) {
   const iva = gravado * tasaIva;
   const total = gravado + noGravado + iva;
 
-  return {
-    detalleCargo,
-    detallePotencia,
-    detalleEnergia,
-    gravado,
-    noGravado,
-    iva,
-    total,
-    __tituloCargoFijo: tituloCargoFijo
-  };
+  return { detalleCargo, detallePotencia, detalleEnergia, gravado, noGravado, iva, total, __tituloCargoFijo: tituloCargoFijo };
 }
 
 // ---------- UI ----------
@@ -284,9 +328,7 @@ const detalleBody = document.getElementById("detalleBody");
 const totalOut = document.getElementById("totalOut");
 const notaTarifa = document.getElementById("notaTarifa");
 
-function getKwBlock() {
-  return kwInput?.parentElement;
-}
+function getKwBlock() { return kwInput?.parentElement; }
 
 function addSection(title) {
   const tr = document.createElement("tr");
@@ -328,11 +370,7 @@ function renderResultado(res, tarifa) {
 
 function showWarn(msg) {
   if (!warnBox) return;
-  if (!msg) {
-    warnBox.style.display = "none";
-    warnBox.textContent = "";
-    return;
-  }
+  if (!msg) { warnBox.style.display = "none"; warnBox.textContent = ""; return; }
   warnBox.style.display = "block";
   warnBox.textContent = msg;
 }
@@ -357,7 +395,9 @@ function renderInputsForTarifa(tarifa) {
   if (kwBlock) kwBlock.style.display = potenciaAplica ? "block" : "none";
 
   const tipo = tarifa.energia?.tipo;
-  const showReactiva = (tarifa.id !== "TCB") && (tarifa.reactiva?.modelo === "grupo1_k1");
+
+  // Reactiva: NO en TCB, y solo si tarifa.reactiva.modelo existe
+  const showReactiva = (tarifa.id !== "TCB") && !!tarifa.reactiva?.modelo;
 
   const reactivaBlock = showReactiva ? `
     <div class="inline">
@@ -372,6 +412,7 @@ function renderInputsForTarifa(tarifa) {
         </div>
         <div></div>
       </div>
+      <div class="muted">TRD: ingresá reactiva TOTAL del mes (se usa Ea total) y se aplica sobre $ de Punta.</div>
     </div>
   ` : "";
 
