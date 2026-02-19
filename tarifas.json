@@ -14,10 +14,7 @@
         ]
       },
       "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
-      },
+      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true } },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "Modalidad Residencial. Potencia contratada <= 40 kW."
     },
@@ -31,12 +28,10 @@
         "punta": { "precioPorKWh": 12.034 },
         "fueraPunta": { "precioPorKWh": 4.771 }
       },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
-      },
+      "reactiva": { "modelo": "grupo2_trd", "defaultCalcula": false },
+      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true } },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "Residencial opcional. Potencia contratada >= 3,5 kW y <= 40 kW."
+      "notas": "Reactiva TRD: coef (Er/Ea) total (punta+fuera) aplicado sobre el importe de energía en Punta (sin IVA)."
     },
     {
       "id": "TRT",
@@ -49,12 +44,9 @@
         "llano": { "precioPorKWh": 5.172 },
         "punta": { "precioPorKWh": 12.034 }
       },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true }
-      },
+      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true } },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "Para esta versión: cargá los kWh de punta de fines de semana/feriados como Llano (punta fin de semana = llano)."
+      "notas": "Para esta versión: cargá los kWh de punta de fines de semana/feriados como Llano."
     },
     {
       "id": "TGS",
@@ -69,10 +61,7 @@
         ]
       },
       "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true }
-      },
+      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true } },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "No Residencial ni Alumbrado Público. Todos los conceptos llevan IVA."
     },
@@ -88,11 +77,7 @@
           { "desdeIncluye": 351, "hastaIncluye": null, "precioPorKWh": 10.539 }
         ]
       },
-      "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": false, "potencia": false, "energia": true, "reactiva": true }
-      },
+      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": false, "energia": true, "reactiva": true } },
       "ui": { "tituloCargoFijo": "CARGO MENSUAL", "labelCargoFijo": "Cargo mensual" },
       "notas": "Incluye hasta 100 kWh/mes dentro del cargo mensual. El cargo mensual NO grava IVA."
     }
