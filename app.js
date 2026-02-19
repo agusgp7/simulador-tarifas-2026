@@ -163,19 +163,21 @@ function calcReactivaGrupo1(eaKwhTotal, erKvarhTotal, energiaActivaImporteSinIva
 function calcReactivaGrupo2TRD(eaTotalKwh, erTotalKvarh, importePuntaSinIva) {
   const ea = Math.max(0, eaTotalKwh);
   const er = Math.max(0, erTotalKvarh);
-  if (ea <= 0 || er <= 0) return { coefTotal: 0, cargo: 0 };
+
+  // Solo bloqueamos si no hay energía activa
+  if (ea <= 0) return { coefTotal: 0, cargo: 0 };
 
   const ratio = er / ea;
 
-  // k1 = 36 × (ratio - 0,426) × 0,01 => 0,36*(ratio-0,426)
+  // k1 = 36 × (ratio - 0,426) × 0,01
   const k1 = 0.36 * (ratio - 0.426);
 
-  // k1ad = (100-36) × (ratio - 0,7) × 0,01 => 0,64*(ratio-0,7) si ratio>0,7
+  // k1 adicional si ratio > 0,7
   const k1ad = (ratio > 0.7) ? (0.64 * (ratio - 0.7)) : 0;
 
   const coefTotal = k1 + k1ad;
 
-  // coef puede ser negativo => bonificación
+  // Puede ser negativo (bonificación)
   const cargo = coefTotal * Math.max(0, importePuntaSinIva);
 
   return { coefTotal, cargo };
