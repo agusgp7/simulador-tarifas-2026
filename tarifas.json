@@ -112,11 +112,7 @@
         "puntaLlano": { "precioPorkW": 394.4 },
         "valle": { "precioPorkW": 20.9 },
         "minimoFactor": 0.5,
-        "excedentaria": {
-          "umbralFactor": 1.3,
-          "factorEscalon1": 1.0,
-          "factorEscalon2": 3.0
-        }
+        "excedentaria": { "umbralFactor": 1.3, "factorEscalon1": 1.0, "factorEscalon2": 3.0 }
       },
       "energia": {
         "tipo": "triple_horario",
@@ -124,18 +120,36 @@
         "llano": { "precioPorKWh": 5.794 },
         "valle": { "precioPorKWh": 2.632 }
       },
-      "reactiva": {
-        "modelo": "grupo3",
-        "A": 23,
-        "always": true,
-        "includePotenciaReactiva": true
-      },
+      "reactiva": { "modelo": "grupo3", "A": 23, "always": true, "includePotenciaReactiva": true },
       "iva": {
         "tasa": 0.22,
         "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
       },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "Condición: Potencia Contratada Punta-Llano ≤ Potencia Contratada Valle. Potencia facturable por tramo = max(leída, 50% contratada). Excedentaria: 100% hasta 30% por encima; 300% para el excedente >30%."
+    },
+    {
+      "id": "THE",
+      "nombre": "Tarifa General Hora-Estacional (THE) - 230/400V",
+      "cargoFijo": 365.8,
+      "potencia": {
+        "tipo": "the_potencia_contratada",
+        "precioPorkW": 130.6
+      },
+      "energia": {
+        "tipo": "the_estacional",
+        "puntaHabiles": { "precioPorKWh": 10.479, "label": "Punta días hábiles" },
+        "puntaNoHabiles": { "precioPorKWh": 4.61, "label": "Punta días NO hábiles" },
+        "llano": { "precioPorKWh": 4.61 },
+        "valle": { "precioPorKWh": 2.096 }
+      },
+      "reactiva": { "modelo": "grupo3", "A": 23, "always": true, "includePotenciaReactiva": true },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "En esta versión: Potencia contratada se calcula como (Contratada P-LL × $/kW). Reactiva Grupo 3: Energía Reactiva sobre $Punta (hábiles + NO hábiles) y Potencia Reactiva sobre $Potencia leída P-LL."
     }
   ]
 }
