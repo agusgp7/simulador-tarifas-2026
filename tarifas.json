@@ -14,7 +14,10 @@
         ]
       },
       "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
-      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true } },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "Modalidad Residencial. Potencia contratada <= 40 kW."
     },
@@ -29,7 +32,10 @@
         "fueraPunta": { "precioPorKWh": 4.771 }
       },
       "reactiva": { "modelo": "grupo2_trd", "defaultCalcula": false },
-      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true } },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "Reactiva TRD: coef (Er/Ea) total (punta+fuera) aplicado sobre el importe de energía en Punta (sin IVA)."
     },
@@ -44,7 +50,10 @@
         "llano": { "precioPorKWh": 5.172 },
         "punta": { "precioPorKWh": 12.034 }
       },
-      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true } },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "Para esta versión: cargá los kWh de punta de fines de semana/feriados como Llano."
     },
@@ -61,7 +70,10 @@
         ]
       },
       "reactiva": { "modelo": "grupo1_k1", "defaultCalcula": false },
-      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true } },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
       "notas": "No Residencial ni Alumbrado Público. Todos los conceptos llevan IVA."
     },
@@ -77,9 +89,40 @@
           { "desdeIncluye": 351, "hastaIncluye": null, "precioPorKWh": 10.539 }
         ]
       },
-      "iva": { "tasa": 0.22, "aplica": { "cargoFijo": false, "potencia": false, "energia": true, "reactiva": true } },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": false, "energia": true, "reactiva": true, "excedentaria": true }
+      },
       "ui": { "tituloCargoFijo": "CARGO MENSUAL", "labelCargoFijo": "Cargo mensual" },
       "notas": "Incluye hasta 100 kWh/mes dentro del cargo mensual. El cargo mensual NO grava IVA."
+    },
+    {
+      "id": "MC1",
+      "nombre": "Mediano Consumidor 1 (MC1) - 230/400V",
+      "cargoFijo": 574.8,
+      "potencia": {
+        "tipo": "mc_potencia_tramos",
+        "puntaLlano": { "precioPorkW": 394.4 },
+        "valle": { "precioPorkW": 20.9 },
+        "minimoFactor": 0.5,
+        "excedentaria": {
+          "umbralFactor": 1.3,
+          "factorEscalon1": 1.0,
+          "factorEscalon2": 3.0
+        }
+      },
+      "energia": {
+        "tipo": "triple_horario",
+        "punta": { "precioPorKWh": 13.182 },
+        "llano": { "precioPorKWh": 5.794 },
+        "valle": { "precioPorKWh": 2.632 }
+      },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "Condición: Potencia Contratada Punta-Llano ≤ Potencia Contratada Valle. Potencia facturable por tramo = max(leída, 50% contratada). Excedentaria: 100% hasta 30% por encima; 300% para el excedente >30%."
     }
   ]
 }
