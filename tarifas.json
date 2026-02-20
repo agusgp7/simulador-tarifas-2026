@@ -50,6 +50,13 @@
         "llano": { "precioPorKWh": 5.172 },
         "punta": { "precioPorKWh": 12.034 }
       },
+      "reactiva": {
+        "modelo": "grupo3",
+        "A": 23,
+        "defaultCalcula": false,
+        "always": false,
+        "includePotenciaReactiva": false
+      },
       "iva": {
         "tasa": 0.22,
         "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
@@ -116,6 +123,12 @@
         "punta": { "precioPorKWh": 13.182 },
         "llano": { "precioPorKWh": 5.794 },
         "valle": { "precioPorKWh": 2.632 }
+      },
+      "reactiva": {
+        "modelo": "grupo3",
+        "A": 23,
+        "always": true,
+        "includePotenciaReactiva": true
       },
       "iva": {
         "tasa": 0.22,
