@@ -2,7 +2,7 @@
   "tarifas": [
     {
       "id": "TRS",
-      "nombre": "Tarifa Residencial Simple (<= 40 kW, 230/400V)",
+      "nombre": "Tarifa Residencial Simple (TRS) (<= 40 kW, 230/400V)",
       "cargoFijo": 324.9,
       "potencia": { "precioPorkW": 83.2 },
       "energia": {
@@ -19,50 +19,7 @@
         "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
       },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "Modalidad Residencial. Potencia contratada <= 40 kW."
-    },
-    {
-      "id": "TRD",
-      "nombre": "Tarifa Doble Horario Residencial (TRD) (3,5 a 40 kW)",
-      "cargoFijo": 488.0,
-      "potencia": { "precioPorkW": 83.2 },
-      "energia": {
-        "tipo": "doble_horario",
-        "punta": { "precioPorKWh": 12.034 },
-        "fueraPunta": { "precioPorKWh": 4.771 }
-      },
-      "reactiva": { "modelo": "grupo2_trd", "defaultCalcula": false },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
-      },
-      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "Reactiva TRD: coef (Er/Ea) total aplicado sobre el importe de energía en Punta (sin IVA)."
-    },
-    {
-      "id": "TRT",
-      "nombre": "Tarifa Triple Horario Residencial (TRT) (3,5 a 40 kW)",
-      "cargoFijo": 488.0,
-      "potencia": { "precioPorkW": 83.2 },
-      "energia": {
-        "tipo": "triple_horario",
-        "valle": { "precioPorKWh": 2.443 },
-        "llano": { "precioPorKWh": 5.172 },
-        "punta": { "precioPorKWh": 12.034 }
-      },
-      "reactiva": {
-        "modelo": "grupo3",
-        "A": 23,
-        "defaultCalcula": false,
-        "always": false,
-        "includePotenciaReactiva": false
-      },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
-      },
-      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "Para esta versión: cargá los kWh de punta de fines de semana/feriados como Llano."
+      "notas": "Grupo 1: reactiva opcional (UTE puede cobrar o no)."
     },
     {
       "id": "TGS",
@@ -82,7 +39,7 @@
         "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
       },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "No Residencial ni Alumbrado Público. Todos los conceptos llevan IVA."
+      "notas": "Todos los conceptos llevan IVA."
     },
     {
       "id": "TCB",
@@ -101,7 +58,44 @@
         "aplica": { "cargoFijo": false, "potencia": false, "energia": true, "reactiva": true, "excedentaria": true }
       },
       "ui": { "tituloCargoFijo": "CARGO MENSUAL", "labelCargoFijo": "Cargo mensual" },
-      "notas": "Incluye hasta 100 kWh/mes dentro del cargo mensual. El cargo mensual NO grava IVA."
+      "notas": "Incluye hasta 100 kWh/mes dentro del cargo mensual. Cargo mensual NO grava IVA."
+    },
+    {
+      "id": "TRD",
+      "nombre": "Tarifa Doble Horario Residencial (TRD) (3,5 a 40 kW)",
+      "cargoFijo": 488.0,
+      "potencia": { "precioPorkW": 83.2 },
+      "energia": {
+        "tipo": "doble_horario",
+        "punta": { "precioPorKWh": 12.034 },
+        "fueraPunta": { "precioPorKWh": 4.771 }
+      },
+      "reactiva": { "modelo": "grupo2_trd", "defaultCalcula": false },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "Grupo 2: reactiva se aplica sobre $ de energía Punta (sin IVA). Puede bonificar o penalizar."
+    },
+    {
+      "id": "TRT",
+      "nombre": "Tarifa Triple Horario Residencial (TRT) (3,5 a 40 kW)",
+      "cargoFijo": 488.0,
+      "potencia": { "precioPorkW": 83.2 },
+      "energia": {
+        "tipo": "triple_horario",
+        "valle": { "precioPorKWh": 2.443 },
+        "llano": { "precioPorKWh": 5.172 },
+        "punta": { "precioPorKWh": 12.034 }
+      },
+      "reactiva": { "modelo": "grupo3", "A": 23, "always": false, "includePotenciaReactiva": false, "defaultCalcula": false },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": false, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "Grupo 3 opcional (con botón)."
     },
     {
       "id": "MC1",
@@ -126,27 +120,7 @@
         "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
       },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "MC1: Potencia por tramo = max(leída, 50% contratada). Excedentaria: 100% hasta +30% y 300% para el excedente >30%."
-    },
-    {
-      "id": "THE",
-      "nombre": "Tarifa General Hora-Estacional (THE) - 230/400V",
-      "cargoFijo": 365.8,
-      "potencia": { "tipo": "the_potencia_contratada", "precioPorkW": 130.6 },
-      "energia": {
-        "tipo": "the_estacional",
-        "puntaHabiles": { "precioPorKWh": 10.479, "label": "Punta días hábiles" },
-        "puntaNoHabiles": { "precioPorKWh": 4.61, "label": "Punta días NO hábiles" },
-        "llano": { "precioPorKWh": 4.61 },
-        "valle": { "precioPorKWh": 2.096 }
-      },
-      "reactiva": { "modelo": "grupo3", "A": 23, "always": true, "includePotenciaReactiva": true },
-      "iva": {
-        "tasa": 0.22,
-        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
-      },
-      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "THE: Reactiva Grupo 3. Energía reactiva sobre $Punta (hábiles+NO hábiles). Potencia reactiva sobre $Potencia leída P-LL."
+      "notas": "Grupo 3 (A=23): energía reactiva sobre $ Punta; potencia reactiva por tramo."
     },
     {
       "id": "MC2",
@@ -172,7 +146,7 @@
         "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
       },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "MC2: Potencia por tramo = max(leída, 100% contratada). Excedentaria por tramo: 100% hasta +30% y 300% >+30%. Reactiva Grupo 3 (A=18)."
+      "notas": "Grupo 3 (A=18). Potencia base: max(leída, 100% contratada)."
     },
     {
       "id": "MC3",
@@ -198,7 +172,132 @@
         "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
       },
       "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
-      "notas": "MC3: Potencia por tramo = max(leída, 100% contratada). Excedentaria por tramo: 100% hasta +30% y 300% >+30%. Reactiva Grupo 3 (A=12)."
+      "notas": "Grupo 3 (A=12). Potencia base: max(leída, 100% contratada)."
+    },
+    {
+      "id": "THE",
+      "nombre": "Tarifa General Hora-Estacional (THE) - 230/400V",
+      "cargoFijo": 365.8,
+      "potencia": { "tipo": "the_potencia_contratada", "precioPorkW": 130.6 },
+      "energia": {
+        "tipo": "the_estacional",
+        "puntaHabiles": { "precioPorKWh": 10.479, "label": "Punta días hábiles" },
+        "puntaNoHabiles": { "precioPorKWh": 4.61, "label": "Punta días NO hábiles" },
+        "llano": { "precioPorKWh": 4.61 },
+        "valle": { "precioPorKWh": 2.096 }
+      },
+      "reactiva": { "modelo": "grupo3", "A": 23, "always": true, "includePotenciaReactiva": true },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "Grupo 3 (A=23). Energía reactiva sobre $ Punta (hábiles+NO hábiles)."
+    },
+
+    {
+      "id": "GC1",
+      "nombre": "Gran Consumidor 1 (GC1)",
+      "cargoFijo": 5225,
+      "potencia": {
+        "tipo": "mc_potencia_3tramos",
+        "punta": { "precioPorkW": 737.8 },
+        "llano": { "precioPorkW": 317.6 },
+        "valle": { "precioPorkW": 52.1 },
+        "minimoFactor": 1.0,
+        "excedentaria": { "umbralFactor": 1.3, "factorEscalon1": 1.0, "factorEscalon2": 3.0 }
+      },
+      "energia": {
+        "tipo": "triple_horario",
+        "punta": { "precioPorKWh": 6.824 },
+        "llano": { "precioPorKWh": 4.583 },
+        "valle": { "precioPorKWh": 2.544 }
+      },
+      "reactiva": { "modelo": "grupo3_gc_q1", "A": 23, "always": true, "includePotenciaReactiva": true },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "GC1: reactiva Grupo 3 usando SOLO Q1. Energía reactiva sobre $ Punta; potencia reactiva por tramo."
+    },
+    {
+      "id": "GC2",
+      "nombre": "Gran Consumidor 2 (GC2)",
+      "cargoFijo": 5539,
+      "potencia": {
+        "tipo": "mc_potencia_3tramos",
+        "punta": { "precioPorkW": 356.2 },
+        "llano": { "precioPorkW": 300.2 },
+        "valle": { "precioPorkW": 60.1 },
+        "minimoFactor": 1.0,
+        "excedentaria": { "umbralFactor": 1.3, "factorEscalon1": 1.0, "factorEscalon2": 3.0 }
+      },
+      "energia": {
+        "tipo": "triple_horario",
+        "punta": { "precioPorKWh": 5.453 },
+        "llano": { "precioPorKWh": 4.441 },
+        "valle": { "precioPorKWh": 2.543 }
+      },
+      "reactiva": { "modelo": "grupo3_gc_q1", "A": 18, "always": true, "includePotenciaReactiva": true },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "GC2: reactiva Grupo 3 usando SOLO Q1. Energía reactiva sobre $ Punta; potencia reactiva por tramo."
+    },
+    {
+      "id": "GC3",
+      "nombre": "Gran Consumidor 3 (GC3)",
+      "cargoFijo": 10267,
+      "potencia": {
+        "tipo": "mc_potencia_3tramos",
+        "punta": { "precioPorkW": 307.2 },
+        "llano": { "precioPorkW": 186.2 },
+        "valle": { "precioPorkW": 56.8 },
+        "minimoFactor": 1.0,
+        "excedentaria": { "umbralFactor": 1.3, "factorEscalon1": 1.0, "factorEscalon2": 3.0 }
+      },
+      "energia": {
+        "tipo": "triple_horario",
+        "punta": { "precioPorKWh": 5.261 },
+        "llano": { "precioPorKWh": 3.944 },
+        "valle": { "precioPorKWh": 2.4 }
+      },
+      "reactiva": { "modelo": "gc_grupo3_2_pot_only", "always": true, "includePotenciaReactiva": true },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "GC3: Grupo 3.2 (usa Q1+Q4). SOLO potencia reactiva (NO energía reactiva). Umbral 0,329."
+    },
+    {
+      "id": "GC5",
+      "nombre": "Gran Consumidor 5 (GC5)",
+      "cargoFijo": 14630,
+      "potencia": {
+        "tipo": "mc_potencia_3tramos",
+        "punta": { "precioPorkW": 212.8 },
+        "llano": { "precioPorkW": 159.1 },
+        "valle": { "precioPorkW": 53.2 },
+        "minimoFactor": 1.0,
+        "excedentaria": { "umbralFactor": 1.3, "factorEscalon1": 1.0, "factorEscalon2": 3.0 }
+      },
+      "energia": {
+        "tipo": "triple_horario",
+        "punta": { "precioPorKWh": 5.258 },
+        "llano": { "precioPorKWh": 3.942 },
+        "valle": { "precioPorKWh": 2.399 }
+      },
+      "reactiva": { "modelo": "gc_grupo3_2_pot_only", "always": true, "includePotenciaReactiva": true },
+      "iva": {
+        "tasa": 0.22,
+        "aplica": { "cargoFijo": true, "potencia": true, "energia": true, "reactiva": true, "excedentaria": true }
+      },
+      "ui": { "tituloCargoFijo": "CARGO FIJO", "labelCargoFijo": "Cargo fijo mensual" },
+      "notas": "GC5: Grupo 3.2 (usa Q1+Q4). SOLO potencia reactiva (NO energía reactiva). Umbral 0,329."
     }
   ]
 }
