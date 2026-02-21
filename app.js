@@ -230,7 +230,24 @@ function calcReactivaGrupo3Potencia(eaTotalKwh, erTotalKvarh, importePotenciaLei
   return { coefTotal, cargo };
 }
 
-// ---------- Potencia MC1 (2 tramos) ----------
+// ---------- Reactiva Grupo 3.2 (SOLO potencia, umbral 0,329, usa Q1+Q4) ----------
+function calcReactivaGrupo32PotenciaOnly(eaTotalKwh, erSumQ1Q4, importePotenciaLeidaTramo) {
+  const ea = Math.max(0, eaTotalKwh);
+  const er = Math.max(0, erSumQ1Q4);
+  if (ea <= 0) return { coefTotal: 0, cargo: 0 };
+
+  const ratio = er / ea;
+
+  const k = 0.62 * (ratio - 0.329);
+  const kad = (ratio > 0.7) ? (0.38 * (ratio - 0.7)) : 0;
+
+  const coefTotal = k + kad;
+  const cargo = coefTotal * Math.max(0, importePotenciaLeidaTramo);
+
+  return { coefTotal, cargo };
+}
+
+// ---------- Potencia MC1 (2 tramos + mínimo + excedentaria) ----------
 function calcPotenciaMCTramos(params) {
   const {
     contrPL, contrV,
@@ -265,7 +282,7 @@ function calcPotenciaMCTramos(params) {
   return { factPL, factV, basePL, baseV, excPL, excV };
 }
 
-// ---------- Potencia MC2/MC3 (3 tramos) ----------
+// ---------- Potencia MC2/MC3/GC (3 tramos + mínimo + excedentaria) ----------
 function calcPotenciaMC3Tramos(params) {
   const {
     contrP, contrL, contrV,
@@ -275,7 +292,7 @@ function calcPotenciaMC3Tramos(params) {
   } = params;
 
   function tramo(contr, leida, precio) {
-    const min = minimoFactor * contr;     // <-- MC2/MC3: minimoFactor = 1.0 => min = 100% contratada
+    const min = minimoFactor * contr;
     const fact = Math.max(leida, min);
     const base = fact * precio;
 
@@ -497,13 +514,12 @@ function calcularTarifa(tarifa, inputs) {
       const pct = rr.coefTotal * 100;
       const cargo = round2(rr.cargo);
 
-      if (energiaPuntaImporteSinIva > 0 && cargo !== 0) {
-        detalleEnergia.push({
-          concepto: `Energía Reactiva ${fmtPercentSigned(pct)} x ${fmtMoneyUY(energiaPuntaImporteSinIva)}`,
-          importe: cargo,
-          aplicaIva: !!aplica.reactiva
-        });
-      }
+      // si está tildado, aunque er=0, igual muestra (queda 0)
+      detalleEnergia.push({
+        concepto: `Energía Reactiva ${fmtPercentSigned(pct)} x ${fmtMoneyUY(energiaPuntaImporteSinIva)}`,
+        importe: cargo,
+        aplicaIva: !!aplica.reactiva
+      });
     }
 
   } else if (energia.tipo === "triple_horario") {
@@ -520,9 +536,13 @@ function calcularTarifa(tarifa, inputs) {
     energiaPuntaImporteSinIva = res.importePuntaSinIva;
     energiaActivaImporteSinIva = res.detalle.reduce((a, r) => a + r.importe, 0);
 
-    const reorderIds = new Set(["MC1", "MC2", "MC3"]);
+    const reorderIds = new Set(["MC1", "MC2", "MC3", "GC1", "GC2", "GC3", "GC5"]);
     const detOrdenado = reorderIds.has(tarifa.id)
-      ? [res.detalle.find(x => x.concepto.startsWith("Punta")), res.detalle.find(x => x.concepto.startsWith("Llano")), res.detalle.find(x => x.concepto.startsWith("Valle"))].filter(Boolean)
+      ? [
+          res.detalle.find(x => x.concepto.startsWith("Punta")),
+          res.detalle.find(x => x.concepto.startsWith("Llano")),
+          res.detalle.find(x => x.concepto.startsWith("Valle"))
+        ].filter(Boolean)
       : res.detalle;
 
     detOrdenado.forEach(r => detalleEnergia.push({ ...r, aplicaIva: !!aplica.energia }));
@@ -556,93 +576,116 @@ function calcularTarifa(tarifa, inputs) {
     throw new Error("Tipo de energía no soportado: " + (energia.tipo ?? "desconocido"));
   }
 
-  // -------- Reactiva Grupo 1 (TRS/TGS) opcional --------
+  // -------- Reactiva Grupo 1 (opcional) --------
   if (!!inputs.calculaReactiva && tarifa.reactiva?.modelo === "grupo1_k1") {
     const er = Math.max(0, num(inputs.kvarh));
     const rr = calcReactivaGrupo1(eaTotalKwh, er, energiaActivaImporteSinIva);
     const pct = rr.coefTotal * 100;
     const cargo = round2(rr.cargo);
 
-    if (cargo !== 0) {
-      detalleEnergia.push({
-        concepto: `Energía Reactiva ${fmtPercentSigned(pct)} x ${fmtMoneyUY(energiaActivaImporteSinIva)}`,
-        importe: cargo,
-        aplicaIva: !!aplica.reactiva
-      });
-    }
+    detalleEnergia.push({
+      concepto: `Energía Reactiva ${fmtPercentSigned(pct)} x ${fmtMoneyUY(energiaActivaImporteSinIva)}`,
+      importe: cargo,
+      aplicaIva: !!aplica.reactiva
+    });
   }
 
-  // -------- Reactiva Grupo 3 (MCx/THE siempre, TRT opcional) --------
-  if (tarifa.reactiva?.modelo === "grupo3") {
-    const A = num(tarifa.reactiva.A ?? 23);
-    const always = !!tarifa.reactiva.always;
-    const includePot = !!tarifa.reactiva.includePotenciaReactiva;
-    const debeCalcular = always ? true : (!!inputs.calculaReactiva);
+  // -------- Reactiva Grupo 3 / GC Q1 / GC 3.2 --------
+  const react = tarifa.reactiva || null;
+  if (react) {
+    const modelo = react.modelo;
+
+    const debeCalcular = react.always ? true : (!!inputs.calculaReactiva);
 
     if (debeCalcular) {
-      const erTotal = Math.max(0, num(inputs.kvarh));
+      // Er según modelo
+      const erQ1 = Math.max(0, num(inputs.kvarhQ1 ?? inputs.kvarh));
+      const erQ4 = Math.max(0, num(inputs.kvarhQ4 ?? 0));
 
-      // Energía reactiva sobre $punta
-      const rrE = calcReactivaGrupo3Energia(eaTotalKwh, erTotal, energiaPuntaImporteSinIva, A);
-      const pctE = rrE.coefTotal * 100;
-      const cargoE = round2(rrE.cargo);
+      const erTotal =
+        (modelo === "grupo3_gc_q1") ? erQ1 :
+        (modelo === "gc_grupo3_2_pot_only") ? (erQ1 + erQ4) :
+        Math.max(0, num(inputs.kvarh));
 
-      if (energiaPuntaImporteSinIva > 0 && cargoE !== 0) {
-        detalleEnergia.push({
-          concepto: `Energía Reactiva ${fmtPercentSigned(pctE)} x ${fmtMoneyUY(energiaPuntaImporteSinIva)}`,
-          importe: cargoE,
-          aplicaIva: !!aplica.reactiva
-        });
-      }
+      // (1) Grupo 3 normal: energía reactiva + potencia reactiva
+      if (modelo === "grupo3" || modelo === "grupo3_gc_q1") {
+        const A = num(react.A ?? 23);
 
-      // Potencia reactiva por tramo (usa potencia leída, sin mínimos)
-      if (includePot) {
-        if (tarifa.id === "MC1") {
-          const impPL = Math.max(0, mc_leidaPL) * Math.max(0, mc_precioPL);
-          const impV  = Math.max(0, mc_leidaV)  * Math.max(0, mc_precioV);
+        // Energía reactiva sobre $punta
+        const rrE = calcReactivaGrupo3Energia(eaTotalKwh, erTotal, energiaPuntaImporteSinIva, A);
+        const pctE = rrE.coefTotal * 100;
+        const cargoE = round2(rrE.cargo);
 
-          const rrPL = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impPL);
-          const rrV  = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impV);
-
-          const pctPL = rrPL.coefTotal * 100;
-          const pctV  = rrV.coefTotal * 100;
-
-          const cargoPL = round2(rrPL.cargo);
-          const cargoV  = round2(rrV.cargo);
-
-          if (impPL > 0 && cargoPL !== 0) detallePotencia.push({ concepto: `Potencia Reactiva P-LL ${fmtPercentSigned(pctPL)} x ${fmtMoneyUY(impPL)}`, importe: cargoPL, aplicaIva: !!aplica.reactiva });
-          if (impV  > 0 && cargoV  !== 0) detallePotencia.push({ concepto: `Potencia Reactiva Valle ${fmtPercentSigned(pctV)} x ${fmtMoneyUY(impV)}`, importe: cargoV, aplicaIva: !!aplica.reactiva });
+        // en always, aunque sea 0, lo mostramos igual
+        if (energiaPuntaImporteSinIva > 0) {
+          detalleEnergia.push({
+            concepto: `Energía Reactiva ${fmtPercentSigned(pctE)} x ${fmtMoneyUY(energiaPuntaImporteSinIva)}`,
+            importe: cargoE,
+            aplicaIva: !!aplica.reactiva
+          });
         }
 
-        if (tarifa.id === "MC2" || tarifa.id === "MC3") {
+        // Potencia reactiva por tramo según tarifa
+        if (!!react.includePotenciaReactiva) {
+          if (tarifa.id === "MC1") {
+            const impPL = Math.max(0, mc_leidaPL) * Math.max(0, mc_precioPL);
+            const impV  = Math.max(0, mc_leidaV)  * Math.max(0, mc_precioV);
+
+            const rrPL = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impPL);
+            const rrV  = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impV);
+
+            detallePotencia.push({
+              concepto: `Potencia Reactiva P-LL ${fmtPercentSigned(rrPL.coefTotal * 100)} x ${fmtMoneyUY(impPL)}`,
+              importe: round2(rrPL.cargo),
+              aplicaIva: !!aplica.reactiva
+            });
+            detallePotencia.push({
+              concepto: `Potencia Reactiva Valle ${fmtPercentSigned(rrV.coefTotal * 100)} x ${fmtMoneyUY(impV)}`,
+              importe: round2(rrV.cargo),
+              aplicaIva: !!aplica.reactiva
+            });
+          }
+
+          if (["MC2", "MC3", "GC1", "GC2"].includes(tarifa.id)) {
+            const impP = Math.max(0, mc3_leidaP) * Math.max(0, mc3_precioP);
+            const impL = Math.max(0, mc3_leidaL) * Math.max(0, mc3_precioL);
+            const impV = Math.max(0, mc3_leidaV) * Math.max(0, mc3_precioV);
+
+            const rrP = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impP);
+            const rrL = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impL);
+            const rrV = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impV);
+
+            detallePotencia.push({ concepto: `Potencia Reactiva Punta ${fmtPercentSigned(rrP.coefTotal * 100)} x ${fmtMoneyUY(impP)}`, importe: round2(rrP.cargo), aplicaIva: !!aplica.reactiva });
+            detallePotencia.push({ concepto: `Potencia Reactiva Llano ${fmtPercentSigned(rrL.coefTotal * 100)} x ${fmtMoneyUY(impL)}`, importe: round2(rrL.cargo), aplicaIva: !!aplica.reactiva });
+            detallePotencia.push({ concepto: `Potencia Reactiva Valle ${fmtPercentSigned(rrV.coefTotal * 100)} x ${fmtMoneyUY(impV)}`, importe: round2(rrV.cargo), aplicaIva: !!aplica.reactiva });
+          }
+
+          if (tarifa.id === "THE") {
+            const impPL = Math.max(0, the_leidaPL) * Math.max(0, the_precioKW);
+            const rr = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impPL);
+            detallePotencia.push({
+              concepto: `Potencia Reactiva P-LL ${fmtPercentSigned(rr.coefTotal * 100)} x ${fmtMoneyUY(impPL)}`,
+              importe: round2(rr.cargo),
+              aplicaIva: !!aplica.reactiva
+            });
+          }
+        }
+      }
+
+      // (2) GC Grupo 3.2: SOLO potencia reactiva (Q1+Q4, umbral 0,329)
+      if (modelo === "gc_grupo3_2_pot_only") {
+        if (!!react.includePotenciaReactiva && ["GC3", "GC5"].includes(tarifa.id)) {
           const impP = Math.max(0, mc3_leidaP) * Math.max(0, mc3_precioP);
           const impL = Math.max(0, mc3_leidaL) * Math.max(0, mc3_precioL);
           const impV = Math.max(0, mc3_leidaV) * Math.max(0, mc3_precioV);
 
-          const rrP = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impP);
-          const rrL = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impL);
-          const rrV = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impV);
+          const rrP = calcReactivaGrupo32PotenciaOnly(eaTotalKwh, erTotal, impP);
+          const rrL = calcReactivaGrupo32PotenciaOnly(eaTotalKwh, erTotal, impL);
+          const rrV = calcReactivaGrupo32PotenciaOnly(eaTotalKwh, erTotal, impV);
 
-          const pctP = rrP.coefTotal * 100;
-          const pctL = rrL.coefTotal * 100;
-          const pctV2 = rrV.coefTotal * 100;
-
-          const cargoP = round2(rrP.cargo);
-          const cargoL = round2(rrL.cargo);
-          const cargoV2 = round2(rrV.cargo);
-
-          if (impP > 0 && cargoP !== 0) detallePotencia.push({ concepto: `Potencia Reactiva Punta ${fmtPercentSigned(pctP)} x ${fmtMoneyUY(impP)}`, importe: cargoP, aplicaIva: !!aplica.reactiva });
-          if (impL > 0 && cargoL !== 0) detallePotencia.push({ concepto: `Potencia Reactiva Llano ${fmtPercentSigned(pctL)} x ${fmtMoneyUY(impL)}`, importe: cargoL, aplicaIva: !!aplica.reactiva });
-          if (impV > 0 && cargoV2 !== 0) detallePotencia.push({ concepto: `Potencia Reactiva Valle ${fmtPercentSigned(pctV2)} x ${fmtMoneyUY(impV)}`, importe: cargoV2, aplicaIva: !!aplica.reactiva });
-        }
-
-        if (tarifa.id === "THE") {
-          const impPL = Math.max(0, the_leidaPL) * Math.max(0, the_precioKW);
-          const rr = calcReactivaGrupo3Potencia(eaTotalKwh, erTotal, impPL);
-          const pct = rr.coefTotal * 100;
-          const cargo = round2(rr.cargo);
-
-          if (impPL > 0 && cargo !== 0) detallePotencia.push({ concepto: `Potencia Reactiva P-LL ${fmtPercentSigned(pct)} x ${fmtMoneyUY(impPL)}`, importe: cargo, aplicaIva: !!aplica.reactiva });
+          detallePotencia.push({ concepto: `Potencia Reactiva Punta ${fmtPercentSigned(rrP.coefTotal * 100)} x ${fmtMoneyUY(impP)}`, importe: round2(rrP.cargo), aplicaIva: !!aplica.reactiva });
+          detallePotencia.push({ concepto: `Potencia Reactiva Llano ${fmtPercentSigned(rrL.coefTotal * 100)} x ${fmtMoneyUY(impL)}`, importe: round2(rrL.cargo), aplicaIva: !!aplica.reactiva });
+          detallePotencia.push({ concepto: `Potencia Reactiva Valle ${fmtPercentSigned(rrV.coefTotal * 100)} x ${fmtMoneyUY(impV)}`, importe: round2(rrV.cargo), aplicaIva: !!aplica.reactiva });
         }
       }
     }
@@ -735,11 +778,13 @@ function renderInputsForTarifa(tarifa) {
   }
 
   const tipoE = tarifa.energia?.tipo;
-
   const reactivaCfg = tarifa.reactiva || null;
+
   const alwaysReactiva = !!reactivaCfg?.always;
   const showReactivaInput = (tarifa.id !== "TCB") && !!reactivaCfg?.modelo;
   const showCheckboxReactiva = showReactivaInput && !alwaysReactiva;
+
+  const reactivaUsaQ1Q4 = ["grupo3_gc_q1", "gc_grupo3_2_pot_only"].includes(reactivaCfg?.modelo);
 
   const reactivaBlock = showReactivaInput ? `
     ${showCheckboxReactiva ? `
@@ -749,13 +794,26 @@ function renderInputsForTarifa(tarifa) {
       </div>
     ` : ``}
     <div id="reactivaInputs" style="display:${alwaysReactiva ? "block" : "none"};">
-      <div class="row">
-        <div>
-          <label>Energía reactiva (kVArh)</label>
-          <input id="kvarh" type="number" min="0" step="0.01" value="0" />
+      ${reactivaUsaQ1Q4 ? `
+        <div class="row">
+          <div>
+            <label>Energía reactiva Q1 (kVArh)</label>
+            <input id="kvarhQ1" type="number" min="0" step="0.01" value="0" />
+          </div>
+          <div>
+            <label>Energía reactiva Q4 (kVArh)</label>
+            <input id="kvarhQ4" type="number" min="0" step="0.01" value="0" />
+          </div>
         </div>
-        <div></div>
-      </div>
+      ` : `
+        <div class="row">
+          <div>
+            <label>Energía reactiva (kVArh)</label>
+            <input id="kvarh" type="number" min="0" step="0.01" value="0" />
+          </div>
+          <div></div>
+        </div>
+      `}
     </div>
   ` : "";
 
@@ -894,7 +952,10 @@ calcBtn.addEventListener("click", () => {
     kwhValle: document.getElementById("kwhValle")?.value,
 
     calculaReactiva: document.getElementById("calculaReactiva")?.checked ?? false,
+
     kvarh: document.getElementById("kvarh")?.value,
+    kvarhQ1: document.getElementById("kvarhQ1")?.value,
+    kvarhQ4: document.getElementById("kvarhQ4")?.value,
 
     mc_contrPL: document.getElementById("mc_contrPL")?.value,
     mc_contrV: document.getElementById("mc_contrV")?.value,
