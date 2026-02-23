@@ -1,210 +1,92 @@
 <!doctype html>
-<html lang="es-UY">
+<html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Simulador Tarifas UTE 2026</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simulador UTE (interno)</title>
+  <style>
+    body { font-family: system-ui, Arial; margin: 24px; max-width: 980px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display:block; margin-top: 10px; font-weight: 600; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 10px; border: 1px solid #ccc; }
+    button { cursor: pointer; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    td, th { border-bottom: 1px solid #eee; padding: 8px; text-align: left; vertical-align: top; }
+    .right { text-align: right; }
+    .total { font-size: 20px; font-weight: 800; }
+    .muted { color:#666; font-size: 13px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px){ .row{ grid-template-columns: 1fr; } }
+
+    .section-row td { border-bottom: none; padding-top: 14px; padding-bottom: 6px; font-weight: 800; text-transform: uppercase; }
+    .grand-total { margin-top: 14px; display:flex; justify-content: space-between; align-items: baseline; font-weight: 900; font-size: 18px; padding-top: 12px; border-top: 2px solid #111; }
+
+    .topbar { display:flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .topbar a { font-size: 13px; color:#0a58ca; text-decoration: none; }
+    .topbar a:hover { text-decoration: underline; }
+
+    .warn { margin-top: 10px; padding: 10px; border-radius: 10px; border: 1px solid #ffe1a6; background: #fff7e6; color: #5a3b00; font-size: 13px; display:none; }
+
+    .inline { display:flex; align-items:center; gap:10px; margin-top: 10px; }
+    .inline input[type="checkbox"] { width:auto; margin:0; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <div>
-        <h1>Simulador Tarifas UTE 2026</h1>
-        <p class="muted">Uso interno — Simulación mensual y comparador anual (12 meses)</p>
-      </div>
-
-      <div class="tabs">
-        <button id="tabMensual" class="tab active">Mensual</button>
-        <button id="tabAnual" class="tab">Comparador anual</button>
-      </div>
-    </header>
-
-    <div id="warnBox" class="warn" style="display:none;"></div>
-
-    <!-- ====== MODO MENSUAL ====== -->
-    <section id="viewMensual" class="card">
-      <div class="grid">
-        <div>
-          <label>Tarifa</label>
-          <select id="tarifaSelect"></select>
-        </div>
-
-        <div>
-          <label>Potencia contratada (kW) (si aplica)</label>
-          <input id="kwInput" type="number" min="0" step="0.1" value="0" />
-        </div>
-      </div>
-
-      <div id="energyInputs" class="block"></div>
-
-      <div class="actions">
-        <button id="calcBtn" class="btn">Calcular</button>
-      </div>
-
-      <section id="resultCard" class="result" style="display:none;">
-        <h2>Resultado</h2>
-
-        <div class="tableWrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Concepto</th>
-                <th class="right">Importe</th>
-              </tr>
-            </thead>
-            <tbody id="detalleBody"></tbody>
-          </table>
-        </div>
-
-        <div class="totalRow">
-          <div class="totalLabel"><b>TOTAL</b></div>
-          <div class="totalValue"><b id="totalOut">$ 0,00</b></div>
-        </div>
-
-        <p id="notaTarifa" class="muted small"></p>
-      </section>
-    </section>
-
-    <!-- ====== MODO ANUAL ====== -->
-    <section id="viewAnual" class="card" style="display:none;">
-      <div class="grid">
-        <div>
-          <label>Tarifa base (actual) para comparar ahorro</label>
-          <select id="tarifaBaseSelect"></select>
-        </div>
-
-        <div>
-          <label>Tipo de datos de consumo que vas a ingresar</label>
-          <select id="tipoDatoConsumo">
-            <option value="total">Total mensual (kWh)</option>
-            <option value="doble">Doble horario (Punta / Fuera Punta)</option>
-            <option value="triple">Triple horario (Punta / Llano / Valle)</option>
-            <option value="the">THE (Punta hábil / Punta no hábil / Llano / Valle)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="block">
-        <h3>Tarifas a comparar</h3>
-        <div id="tarifasChecklist" class="checkGrid"></div>
-      </div>
-
-      <div class="block">
-        <h3>Parámetros fijos (se aplican a TODOS los meses)</h3>
-        <p class="muted small">
-          Para comparar anual “rápido”, la potencia y la reactiva se toman constantes en el año.
-          Si después querés “modo pro” con potencia/reaktiva mes a mes, lo hacemos.
-        </p>
-
-        <div class="grid">
-          <div>
-            <label>Energía reactiva (kVArh) — constante anual</label>
-            <input id="anualKvarh" type="number" min="0" step="0.01" value="0" />
-          </div>
-          <div>
-            <label>Período Zafral (para TZ)</label>
-            <select id="anualTzPeriodo">
-              <option value="zafra">Zafra (Nov–Mar)</option>
-              <option value="fuera">Fuera de zafra (Abr–Oct)</option>
-            </select>
-          </div>
-        </div>
-
-        <details class="details">
-          <summary><b>Potencias (para MC/GC/TZ/THE)</b> — completar solo si vas a comparar esas tarifas</summary>
-
-          <div class="grid">
-            <div>
-              <label>MC1/THE/TZ: Contratada P-LL (kW)</label>
-              <input id="anual_contrPL" type="number" min="0" step="0.1" value="0" />
-            </div>
-            <div>
-              <label>MC1/THE/TZ: Contratada Valle (kW)</label>
-              <input id="anual_contrV" type="number" min="0" step="0.1" value="0" />
-            </div>
-
-            <div>
-              <label>MC1/THE/TZ: Leída P-LL (kW)</label>
-              <input id="anual_leidaPL" type="number" min="0" step="0.1" value="0" />
-            </div>
-            <div>
-              <label>MC1/THE/TZ: Leída Valle (kW)</label>
-              <input id="anual_leidaV" type="number" min="0" step="0.1" value="0" />
-            </div>
-          </div>
-
-          <div class="grid">
-            <div>
-              <label>MC2/MC3/GC: Contratada Punta (kW)</label>
-              <input id="anual_contrP" type="number" min="0" step="0.1" value="0" />
-            </div>
-            <div>
-              <label>MC2/MC3/GC: Contratada Llano (kW)</label>
-              <input id="anual_contrL" type="number" min="0" step="0.1" value="0" />
-            </div>
-            <div>
-              <label>MC2/MC3/GC: Contratada Valle (kW)</label>
-              <input id="anual_contrV3" type="number" min="0" step="0.1" value="0" />
-            </div>
-
-            <div>
-              <label>MC2/MC3/GC: Leída Punta (kW)</label>
-              <input id="anual_leidaP" type="number" min="0" step="0.1" value="0" />
-            </div>
-            <div>
-              <label>MC2/MC3/GC: Leída Llano (kW)</label>
-              <input id="anual_leidaL" type="number" min="0" step="0.1" value="0" />
-            </div>
-            <div>
-              <label>MC2/MC3/GC: Leída Valle (kW)</label>
-              <input id="anual_leidaV3" type="number" min="0" step="0.1" value="0" />
-            </div>
-          </div>
-
-          <div class="grid">
-            <div>
-              <label>GC: Reactiva Q1 (kVArh)</label>
-              <input id="anual_kvarhQ1" type="number" min="0" step="0.01" value="0" />
-            </div>
-            <div>
-              <label>GC: Reactiva Q4 (kVArh)</label>
-              <input id="anual_kvarhQ4" type="number" min="0" step="0.01" value="0" />
-            </div>
-          </div>
-        </details>
-      </div>
-
-      <div class="block">
-        <h3>Consumos mensuales (12 meses)</h3>
-        <div class="tableWrap">
-          <table class="table" id="anualTable"></table>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="calcAnualBtn" class="btn">Calcular ranking anual</button>
-      </div>
-
-      <section id="anualResultCard" class="result" style="display:none;">
-        <h2>Ranking anual</h2>
-        <div class="tableWrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Tarifa</th>
-                <th class="right">Total anual</th>
-                <th class="right">Ahorro vs base</th>
-              </tr>
-            </thead>
-            <tbody id="anualResultBody"></tbody>
-          </table>
-        </div>
-        <p class="muted small" id="anualNota"></p>
-      </section>
-    </section>
+  <div class="topbar">
+    <div>
+      <h1 style="margin:0;">Simulador de tarifas UTE (interno)</h1>
+      <p class="muted" style="margin:6px 0 0 0;">
+        IVA: cargo fijo NO; demás conceptos SÍ.
+      </p>
+    </div>
+    <div>
+      <a href="./admin.html">Panel de precios</a>
+    </div>
   </div>
 
-  <script src="./app.js?v=anual-1"></script>
+  <div class="card">
+    <label>Tarifa</label>
+    <select id="tarifaSelect"></select>
+
+    <div class="row">
+      <div>
+        <label>Potencia contratada (kW)</label>
+        <input id="kwInput" type="number" min="0" step="0.01" value="0" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <div class="muted">Los consumos de energía se cargan abajo según la tarifa.</div>
+      </div>
+    </div>
+
+    <div id="energyInputs"></div>
+
+    <div class="warn" id="warnBox"></div>
+
+    <button id="calcBtn">Calcular</button>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="total">Resultado mensual</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Concepto</th>
+          <th class="right">Importe</th>
+        </tr>
+      </thead>
+      <tbody id="detalleBody"></tbody>
+    </table>
+
+    <div class="grand-total">
+      <div>TOTAL</div>
+      <div id="totalOut"></div>
+    </div>
+
+    <div class="muted" id="notaTarifa" style="margin-top:10px;"></div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
